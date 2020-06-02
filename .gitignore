@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Added by IPO, specific to HGSOC project
+*results.csv
+
