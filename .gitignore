@@ -120,6 +120,7 @@ venv.bak/
 # mkdocs documentation
 /site
 
+
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -130,4 +131,6 @@ dmypy.json
 
 # Added by IPO, specific to HGSOC project
 *results.csv
-
+*results?.csv
+*.pkl
+hsperfdata_root
