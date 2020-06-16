@@ -130,9 +130,9 @@ dmypy.json
 .pyre/
 
 # Added by IPO, specific to HGSOC project
-*results.csv
-*results?.csv
-*.pkl
-hsperfdata_root
-AOCS_TPM_VST_tab.csv
+Cache/**
+DownloadedResources/**
+Factors/**
+SavedNotebookHtml/**
+
 
