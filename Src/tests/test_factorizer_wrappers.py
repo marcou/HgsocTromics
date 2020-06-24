@@ -27,7 +27,7 @@ def example_v(n_genes=100):
     return V
 
 
-def factorizer_test_helper(facto, atol):
+def factorizer_tst_helper(facto, atol):
     print(facto)
     V = example_v(10)
 
@@ -57,16 +57,16 @@ class MyTestCase(unittest.TestCase):
         print("test_example_V() passed.")
 
     def test_NMF_Factorizer(self):
-        factorizer_test_helper(NMF_Factorizer(n_components=4), atol=0.5)
-        factorizer_test_helper(NMF_Factorizer(n_components=5), atol=0.1)
+        factorizer_tst_helper(NMF_Factorizer(n_components=4), atol=0.5)
+        factorizer_tst_helper(NMF_Factorizer(n_components=5), atol=0.1)
 
     def test_ICA_Factorizer(self):
-        factorizer_test_helper(ICA_Factorizer(n_components=4), atol=0.5)
-        factorizer_test_helper(ICA_Factorizer(n_components=5), atol=0.1)
+        factorizer_tst_helper(ICA_Factorizer(n_components=4), atol=0.5)
+        factorizer_tst_helper(ICA_Factorizer(n_components=5), atol=0.1)
 
     def test_PCA_Factorizer(self):
-        factorizer_test_helper(PCA_Factorizer(n_components=4), atol=0.5)
-        factorizer_test_helper(PCA_Factorizer(n_components=5), atol=0.1)
+        factorizer_tst_helper(PCA_Factorizer(n_components=4), atol=0.5)
+        factorizer_tst_helper(PCA_Factorizer(n_components=5), atol=0.1)
 
 
 if __name__ == '__main__':
