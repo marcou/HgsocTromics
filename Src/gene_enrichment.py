@@ -78,6 +78,25 @@ class GeneEnrichment:
                 print("Comp. %d: %s" % (ci, ' '.join(_genes)))
         return ranked_genes_by_component
 
+    def _perform_gene_enrichment_analysis_one_component(self, ci, gea_results_by_component, gea):
+        tsv_name = self.cache_dir + 'goa_results_C%d.tsv' % ci
+        if len(gea_results_by_component[ci]) > 0:
+            with open(tsv_name, 'w') as f:
+                gea.prt_tsv(f, gea_results_by_component[ci])
+            ge_df = pd.read_csv(tsv_name, sep='\t')
+
+            ge_df.rename(columns={'# GO': 'GO_ID'}, inplace=True)
+            ge_df.set_index('GO_ID', inplace=True)
+            ge_df.drop(columns=['NS', 'enrichment', 'p_uncorrected'], inplace=True)
+            if 'p_fdr' in ge_df.columns:
+                ge_df = ge_df[ge_df['p_fdr'] <= 0.05]
+            else:
+                ge_df = ge_df[ge_df['p_bonferroni'] <= 0.05]
+            ge_df['Component'] = ci
+            return ge_df
+        else:
+            return None
+
     def perform_gene_enrichment_analysis(self, metagene_matrix, method='fdr'):
         # Load the Gene Ontology
         n_comps = metagene_matrix.shape[1]
@@ -119,21 +138,9 @@ class GeneEnrichment:
 
         gea_results_df_by_component = []
         for ci in range(n_comps):
-            tsv_name = self.cache_dir + 'goa_results_C%d.tsv' % ci
-            if len(gea_results_by_component[ci]) > 0:
-                with open(tsv_name, 'w') as f:
-                    gea.prt_tsv(f, gea_results_by_component[ci])
-                ge_df = pd.read_csv(tsv_name, sep='\t')
-
-                ge_df.rename(columns={'# GO': 'GO_ID'}, inplace=True)
-                ge_df.set_index('GO_ID', inplace=True)
-                ge_df.drop(columns=['NS', 'enrichment', 'p_uncorrected'], inplace=True)
-                if 'p_fdr' in ge_df.columns:
-                    ge_df = ge_df[ge_df['p_fdr'] <= 0.05]
-                else:
-                    ge_df = ge_df[ge_df['p_bonferroni'] <= 0.05]
-                ge_df['Component'] = ci
-
+            ge_df = self._perform_gene_enrichment_analysis_one_component(
+                ci, gea_results_by_component, gea)
+            if ge_df is not None:
                 gea_results_df_by_component += [ge_df]
 
         # Merge the per-component dataframes into a single one
