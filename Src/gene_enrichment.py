@@ -30,7 +30,8 @@ class GeneEnrichment:
                     g['symbol'] = ensg  # ensure lookup always succeeds
 
             gene_ENSG_ids = expression_df['GeneENSG']
-            self._gene_symbols = [ensgDict[ensg]['symbol'] for ensg in gene_ENSG_ids]
+            self._gene_symbols = [ensgDict[ensg]['symbol'] if ensg in ensgDict else ensg
+                                  for ensg in gene_ENSG_ids]
         return self._gene_symbols
 
     def read_metagene_matrix(self, factor_name):
@@ -155,10 +156,10 @@ def main():
         ge = GeneEnrichment('Mini_Expression')
         metagenes = ge.read_metagene_matrix('RandomTest_3.csv')
     else:
-        ge = GeneEnrichment('HGSOC_Protein_Expression')
-        metagenes = ge.read_metagene_matrix('S_HGSOC_Protein_Expression_ica_numerical.txt_6.num')
+        ge = GeneEnrichment('TCGA_OV_VST')
+        metagenes = ge.read_metagene_matrix('S_TCGA_OV_VST_ica_numerical.txt_7.num')
 
-    ge.perform_gene_enrichment_analysis(metagenes)
+    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
 
 if __name__ == '__main__':

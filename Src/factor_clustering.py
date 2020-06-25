@@ -108,7 +108,7 @@ class FactorClustering:
         print(pickle_fname)
         metagene_list = []
         for i in range(n_repeats):
-            facto = facto_class(n_components=n_components, max_iter=5000,
+            facto = facto_class(n_components=n_components, max_iter=5000, tol=0.01,
                                 random_state=np.random.randint(10000))
             facto.fit(V)
             metagene_list += [facto.get_W()]
@@ -156,10 +156,10 @@ class FactorClustering:
 
         # For ICA at least, we see double the expected number of components, due to the arbitrary
         # direction of the vector.  So flip them into the same overall direction
-        flipped_metagenes = [g if sum(g[:10]) > 0 else -g for g in stacked_metagenes[:]]
+        flipped_metagenes = [g if g[0] >= 0 else -g for g in stacked_metagenes[:]]
 
         # Reduce to a managable number of dimensions before passing to t-SNE
-        pca = PCA(n_components=min(50, len(flipped_metagenes)))
+        pca = PCA(n_components=min(20, len(flipped_metagenes)))
         tsne = TSNE(n_components=2, init='pca', n_jobs=7)
         Y = tsne.fit_transform(pca.fit_transform(flipped_metagenes))
 
@@ -204,7 +204,7 @@ class FactorClustering:
         # .pkl files which were computed above.
         metagene_list = self.read_cached_factors(facto_class, n_components, n_repeats)
         stacked_metagenes = np.hstack(metagene_list).T
-        flipped_metagenes = [g if sum(g[:10]) > 0 else -g for g in stacked_metagenes[:]]
+        flipped_metagenes = [g if g[0] >= 0 else -g for g in stacked_metagenes[:]]
 
         pca = PCA(n_components=min(10, len(metagene_list)))
         kmeans = KMeans(n_clusters=n_components, random_state=0).fit(
@@ -248,7 +248,7 @@ class FactorClustering:
 # noinspection PyUnusedLocal,PyUnreachableCode
 def main():
     # expression_file = '../Data/Mini_Expression.csv'
-    expression_file = '../Data/HGSOC_Protein_Expression.csv'
+    expression_file = '../Data/TCGA_OV_VST.csv'
 
     if False:
         FactorClustering.demonstrate_angles_in_high_dimensions()
@@ -261,14 +261,18 @@ def main():
     n_repeats = 50
     if False:
         # Beware - this will take hours (for the full size dataset)!
-        clustering.compute_and_cache_multiple_factor_repeats(2, 31, n_repeats)
+        #
+        # clustering.compute_and_cache_multiple_factor_repeats(2, 15, n_repeats)
+        # clustering.compute_and_cache_multiple_factor_repeats(15, 27, n_repeats)
+        clustering.compute_and_cache_multiple_factor_repeats(10, 11, n_repeats)
+
+    if True:
+        # clustering.plot_multiple_combined_factors_scatter(2, 14, n_repeats)
+        # clustering.plot_multiple_combined_factors_scatter(15, 27, n_repeats)
+        clustering.plot_multiple_combined_factors_scatter(10, 11, n_repeats)
 
     if False:
-        clustering.plot_multiple_combined_factors_scatter(2, 14, n_repeats)
-        clustering.plot_multiple_combined_factors_scatter(15, 27, n_repeats)
-
-    if False:
-        clustering.investigate_multiple_cluster_statistics(2, 15, n_repeats)
+        clustering.investigate_multiple_cluster_statistics(2, 27, n_repeats)
 
 
 if __name__ == '__main__':
