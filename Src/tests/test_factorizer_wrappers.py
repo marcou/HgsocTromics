@@ -46,7 +46,7 @@ def factorizer_tst_helper(facto, atol):
 
 
 # noinspection PyMethodMayBeStatic,PyMethodMayBeStatic,PyMethodMayBeStatic,PyMethodMayBeStatic
-class MyTestCase(unittest.TestCase):
+class TestFactorizerWrappers(unittest.TestCase):
     def test_example(self):
         ngenes = 10
         eg_V = example_v(ngenes)
