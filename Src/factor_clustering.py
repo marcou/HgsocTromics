@@ -25,19 +25,20 @@ from factorizer_wrappers import ICA_Factorizer, NMF_Factorizer, PCA_Factorizer
 class FactorClustering:
     # ## Read the expression matrix
     # This is repeated code, should be factored out...
-    def __init__(self):
+    def __init__(self, basename):
+        self.basename = basename
         self.expression_df = None
         self.expression_matrix = None
         self.expression_filename = None
         self.n_genes = None
         self.n_patients = None
 
-    def read_expression_matrix(self, expression_filename='../Data/HGSOC_Protein_Expression.csv'):
+    def read_expression_matrix(self):
         # Read in expression spreadsheet which has been processed (see end of notebook)
         # to inlcude only protein coding genes
 
-        self.expression_filename = expression_filename
-        self.expression_df = pd.read_csv(expression_filename, sep='\t')
+        self.expression_filename = '../Data/%s.csv' % self.basename
+        self.expression_df = pd.read_csv(self.expression_filename, sep='\t')
         self.expression_df.set_index('GeneENSG', inplace=True)
         # assert len(self.expression_df) == 19730  # Only
         # assert len(self.expression_df.columns) == 80
@@ -97,9 +98,8 @@ class FactorClustering:
         # Run NMF and ICA for a range of components, with repeats and save into .pkl fles
         # for later use.
 
-        basename = Path(self.expression_filename).stem
         pickle_fname = "../Cache/%s/FactorClustering/%s_%d_%d.pkl" % \
-                       (basename, facto_class.__name__, n_components, n_repeats)
+                       (self.basename, facto_class.__name__, n_components, n_repeats)
         return pickle_fname
 
     def read_cached_factors(self, facto_class, n_components, n_repeats):
@@ -281,7 +281,7 @@ class FactorClustering:
             print("%6d%10s %10s" % (nc, nmf_consistent, ica_consistent))
 
     def compute_silhouette_score_and_median(self, facto_class, n_components, n_repeats,
-                                            pca_reduced_dims=10, doprint=False):
+                                            pca_reduced_dims=20, doprint=False):
 
         # Get repeated metagenes for this n_components into a matrix of shape
         # (n_components*n_repeats, genes)
@@ -321,6 +321,16 @@ class FactorClustering:
 
         return silhouette_avg, median_metagenes_matrix
 
+    def save_multiple_median_metagenes_to_factors(self, facto_class, start, end, n_repeats):
+        os.makedirs('../Factors/%s' % self.basename, exist_ok=True)
+        for nc in range(start, end):
+            facto_prefix = facto_class.__name__[:3]
+            fname = '../Factors/%s/%s_median_factor_%d.csv' % (self.basename, facto_prefix, nc)
+            _, median_metagenes = self.compute_silhouette_score_and_median(
+                facto_class, nc, n_repeats)
+            np.savetxt(fname, median_metagenes, delimiter='\t')
+            print('\r%d/%d' % (nc, end), end='')
+
     def find_best_n_components(self, facto_class, start, end, n_repeats, doprint=False,
                                doshow=False):
         scores = {}
@@ -340,17 +350,9 @@ class FactorClustering:
 
 # noinspection PyUnusedLocal,PyUnreachableCode
 def main():
-    # expression_file = '../Data/Mini_Expression.csv'
-    expression_file = '../Data/HGSOC_Protein_Expression.csv'
-    # expression_file = '../Data/TCGA_OV_VST.csv'
-
-    if False:
-        FactorClustering.demonstrate_angles_in_high_dimensions()
-        plt.show()
-
-    fc = FactorClustering()
-
-    fc.read_expression_matrix(expression_file)
+    possible_datasets = {1: 'Mini_Expression', 2: 'HGSOC_Protein_Expression', 3: 'TCGA_OV_VST'}
+    fc = FactorClustering(possible_datasets[2])
+    fc.read_expression_matrix()
 
     n_repeats = 50
     if False:
@@ -375,8 +377,12 @@ def main():
     if False:
         fc.single_factor_scatter(NMF_Factorizer, 8, 50)
 
-    if True:
+    if False:
         fc.plot_multiple_single_factors_scatter(NMF_Factorizer, 2, 14, 50)
+
+    if True:
+        fc.save_multiple_median_metagenes_to_factors(NMF_Factorizer, start=2, end=21, n_repeats=50)
+        fc.save_multiple_median_metagenes_to_factors(ICA_Factorizer, start=2, end=21, n_repeats=50)
 
 
 if __name__ == '__main__':

@@ -14,8 +14,8 @@ class TestFactorClustering(TestCase):
 
     def clustering(self):
         if self._clustering is None:
-            self._clustering = FactorClustering()
-            self._clustering.read_expression_matrix('../Data/Mini_Expression.csv')
+            self._clustering = FactorClustering('Mini_Expression')
+            self._clustering.read_expression_matrix()
         return self._clustering
 
     def test_read_expression_matrix(self):
@@ -94,6 +94,10 @@ class TestFactorClustering(TestCase):
         print("Score = %8.6f" % score)
         assert 0 <= score <= 1.0
         assert median_metagenes.shape == (fc.n_genes, n_components)
+
+    def test_save_multiple_median_metagenes_to_factors(self):
+        fc = self.clustering()
+        fc.save_multiple_median_metagenes_to_factors(NMF_Factorizer, start=2, end=5, n_repeats=10)
 
     def test_find_best_n_components(self):
         n_repeats = 10
