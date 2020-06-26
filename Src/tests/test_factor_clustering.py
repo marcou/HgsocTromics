@@ -61,19 +61,19 @@ class TestFactorClustering(TestCase):
 
     def test_single_factor_scatter(self):
         fc = self.clustering()
-        n_repeats = 50
-        n_components = 5
+        n_repeats = 10
+        n_components = 3
         facto = ICA_Factorizer
         fc.compute_and_cache_one_factor_repeats(
             fc.expression_matrix, facto, n_components, n_repeats, force=False)
 
-        fc.single_factor_scatter(facto, n_components, n_repeats)
+        fc.single_factor_scatter(facto, n_components, n_repeats, show=False)
 
     def test_combined_factors_scatter(self):
         fc = self.clustering()
-
-        fc.compute_and_cache_multiple_factor_repeats(4, 5, n_repeats=2, force=False)
-        fc.combined_factors_scatter(4, n_repeats=2)
+        n_repeats = 10
+        fc.compute_and_cache_multiple_factor_repeats(4, 5, n_repeats=n_repeats, force=False)
+        fc.combined_factors_scatter(4, n_repeats=n_repeats)
 
     def test_investigate_cluster_statistics(self):
         fc = self.clustering()
@@ -83,12 +83,12 @@ class TestFactorClustering(TestCase):
         print(result)
 
     def test_compute_silhouette_score_and_median(self):
-        n_repeats = 50
+        n_repeats = 10
         n_components = 3
         facto_class = NMF_Factorizer
         fc = self.clustering()
         fc.compute_and_cache_one_factor_repeats(
-            fc.expression_matrix, facto_class, n_components, n_repeats)
+            fc.expression_matrix, facto_class, n_components, n_repeats, force=False)
         score, median_metagenes = fc.compute_silhouette_score_and_median(
             NMF_Factorizer, n_components, n_repeats, doprint=False)
         print("Score = %8.6f" % score)
@@ -96,13 +96,13 @@ class TestFactorClustering(TestCase):
         assert median_metagenes.shape == (fc.n_genes, n_components)
 
     def test_find_best_n_components(self):
-        n_repeats = 50
+        n_repeats = 10
         facto_class = NMF_Factorizer
-        n_components_range = 2, 10
+        n_components_range = 2, 4
         fc = self.clustering()
         fc.compute_and_cache_multiple_factor_repeats(*n_components_range, n_repeats, force=False)
         fc.find_best_n_components(facto_class, *n_components_range, n_repeats,
-                                  doprint=True, doshow=True)
+                                  doprint=True, doshow=False)
 
 
 if __name__ == '__main__':
