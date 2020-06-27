@@ -26,11 +26,12 @@ from factorizer_wrappers import ICA_Factorizer, NMF_Factorizer, PCA_Factorizer
 class FactorClustering:
     # ## Read the expression matrix
     # This is repeated code, should be factored out...
-    def __init__(self, basename, method='bootstrap'):
+    def __init__(self, basename, n_repeats=50, method='bootstrap'):
         assert method in ['bootstrap', 'fixed']
         self.basename = basename  # Eg "Mini_Expression"
         self.shortname = self.basename[:4]  # e.g. "Mini"
         self.method = method
+        self.n_repeats = n_repeats
         self.expression_df = None
         self.expression_matrix = None
         self.expression_filename = None
@@ -53,22 +54,23 @@ class FactorClustering:
         print(self.n_genes, "genes")
         print(self.n_patients, "patients")
 
-    def cached_factor_repeats_filename(self, facto_class, n_components, n_repeats):
+    def cached_factor_repeats_filename(self, facto_class, n_components):
         # ## Multiple cached runs of NMF and ICA
         # Run NMF and ICA for a range of components, with repeats and save into .pkl fles
         # for later use.
 
         pickle_fname = "../Cache/%s/FactorClustering/%s_%d_%d_%s.pkl" % \
-                       (self.basename, facto_class.__name__, n_components, n_repeats, self.method)
+                       (self.basename, facto_class.__name__, n_components,
+                        self.n_repeats, self.method)
         return pickle_fname
 
-    def read_cached_factors(self, facto_class, n_components, n_repeats):
-        pickle_fname = self.cached_factor_repeats_filename(facto_class, n_components, n_repeats)
+    def read_cached_factors(self, facto_class, n_components):
+        pickle_fname = self.cached_factor_repeats_filename(facto_class, n_components)
         with open(pickle_fname, 'rb') as f:
             metagene_list = pickle.load(f)
         return metagene_list
 
-    def compute_and_cache_one_factor_repeats(self, facto_class, n_components, n_repeats,
+    def compute_and_cache_one_factor_repeats(self, facto_class, n_components,
                                              force=True):
         """
         For the given factorizer and n_components, perform n_repeats factorizations with different
@@ -78,8 +80,7 @@ class FactorClustering:
         """
         assert self.expression_matrix is not None
         assert self.method in ['bootstrap', 'fixed']
-        pickle_fname = self.cached_factor_repeats_filename(
-            facto_class, n_components, n_repeats)
+        pickle_fname = self.cached_factor_repeats_filename(facto_class, n_components)
         p = Path(pickle_fname)
         os.makedirs(p.parent, exist_ok=True)
         if force or not os.path.exists(pickle_fname):
@@ -87,7 +88,7 @@ class FactorClustering:
             metagene_list = []
             V = self.expression_matrix
             n = V.shape[1]  # number of patients
-            for i in range(n_repeats):
+            for i in range(self.n_repeats):
                 facto = facto_class(n_components=n_components, max_iter=5000, tol=0.01,
                                     random_state=np.random.randint(10000))
                 if self.method == 'bootstrap':
@@ -100,28 +101,27 @@ class FactorClustering:
                     # fixed sampling
                     facto.fit(V)
                 metagene_list += [facto.get_W()]
-                print('\r%d/%d' % (i + 1, n_repeats), end='')
+                print('\r%d/%d' % (i + 1, self.n_repeats), end='')
             print()
             with open(pickle_fname, 'wb') as f:
                 pickle.dump(metagene_list, f)
         return pickle_fname
 
-    def compute_and_cache_multiple_factor_repeats(self, start, end, n_repeats=50, force=True):
+    def compute_and_cache_multiple_factor_repeats(self, start, end, force=True):
         # This will take several hours, if enabled!
         if True:
             for nc in range(start, end):
                 for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
-                    self.compute_and_cache_one_factor_repeats(facto_class, nc, n_repeats, force)
+                    self.compute_and_cache_one_factor_repeats(facto_class, nc, force)
 
             print("All Done.")
 
-    def single_factor_scatter(self, facto_class, n_components, n_repeats,
-                              show=True, pca_reduced_dims=20):
+    def single_factor_scatter(self, facto_class, n_components, show=True, pca_reduced_dims=20):
         # t-SNE plot for on factorizer, on component
 
-        metagene_list = self.read_cached_factors(facto_class, n_components, n_repeats)
+        metagene_list = self.read_cached_factors(facto_class, n_components)
         score, median_metagenes = self.compute_silhouette_score_and_median(
-            facto_class, n_components, n_repeats, pca_reduced_dims=pca_reduced_dims)
+            facto_class, n_components, pca_reduced_dims=pca_reduced_dims)
 
         stacked_metagenes = np.hstack(metagene_list + [median_metagenes]).T
 
@@ -133,14 +133,14 @@ class FactorClustering:
         Y = tsne.fit_transform(pca.fit_transform(flipped_metagenes))
 
         # Plot the t-SNE projections
-        assert Y.shape[0] == n_components * n_repeats + n_components
+        assert Y.shape[0] == n_components * self.n_repeats + n_components
 
         # First plot the scattered points
-        plt.scatter(Y[:n_components * n_repeats, 0], Y[:n_components * n_repeats, 1],
+        plt.scatter(Y[:n_components * self.n_repeats, 0], Y[:n_components * self.n_repeats, 1],
                     s=3, label='one sample')
 
         # Then plot the medians
-        plt.scatter(Y[n_components * n_repeats:, 0], Y[n_components * n_repeats:, 1],
+        plt.scatter(Y[n_components * self.n_repeats:, 0], Y[n_components * self.n_repeats:, 1],
                     s=50, marker='+', label='cluster median')
 
         plt.xlabel("t-SNE dimension 1")
@@ -161,7 +161,7 @@ class FactorClustering:
         more thought it needed"""
         return [g if g[0] >= 0 else -g for g in stacked_metagenes[:]]
 
-    def combined_factors_scatter(self, n_components, n_repeats, pca_reduced_dims=20, show=True):
+    def combined_factors_scatter(self, n_components, pca_reduced_dims=20, show=True):
         # ## t-SNE plots of NMF, ICA and PCA components
         # Interesting to see the components generated by the three methods ploted in the same space.
         # However, we must beware of over-interpeting t-SNE plots...
@@ -169,9 +169,9 @@ class FactorClustering:
         # Read back the pickle files containing multiple runs. One file for each n_components
         # for each of NMF and ICA
 
-        nmf_metagene_list = self.read_cached_factors(NMF_Factorizer, n_components, n_repeats)
-        ica_metagene_list = self.read_cached_factors(ICA_Factorizer, n_components, n_repeats)
-        pca_metagene_list = self.read_cached_factors(PCA_Factorizer, n_components, n_repeats)
+        nmf_metagene_list = self.read_cached_factors(NMF_Factorizer, n_components)
+        ica_metagene_list = self.read_cached_factors(ICA_Factorizer, n_components)
+        pca_metagene_list = self.read_cached_factors(PCA_Factorizer, n_components)
 
         stacked_metagenes = np.hstack(nmf_metagene_list + ica_metagene_list + pca_metagene_list).T
 
@@ -185,8 +185,8 @@ class FactorClustering:
         Y = tsne.fit_transform(pca.fit_transform(flipped_metagenes))
 
         # Plot the t-SNE projections in different colours for each factorizer
-        assert Y.shape == (3 * n_components * n_repeats, 2)
-        Ys = np.reshape(Y, (3, n_components * n_repeats, 2))
+        assert Y.shape == (3 * n_components * self.n_repeats, 2)
+        Ys = np.reshape(Y, (3, n_components * self.n_repeats, 2))
 
         plt.scatter(Ys[0, :, 0], Ys[0, :, 1], s=5, label='NMF')
         plt.scatter(Ys[1, :, 0], Ys[1, :, 1], s=5, label='ICA')
@@ -203,79 +203,79 @@ class FactorClustering:
         if show:
             plt.show()
 
-    def plot_multiple_combined_factors_scatter(self, start_comp, end_comp, n_repeats=50, show=True):
+    def plot_multiple_combined_factors_scatter(self, start_comp, end_comp, show=True):
         plt.figure(figsize=(20, 20))
         for nc in range(start_comp, end_comp):
             print('.', end='')
             plt.subplot(4, 3, nc - start_comp + 1)
-            self.combined_factors_scatter(nc, n_repeats, show=False)
+            self.combined_factors_scatter(nc, show=False)
         plt.suptitle("%s; t-SNE clusterings for %d bootstraps of NMF, ICA and PCA" %
-                     (self.shortname, n_repeats), size=14)
+                     (self.shortname, self.n_repeats), size=14)
         if show:
             plt.show()
 
-    def plot_multiple_single_factors_scatter(self, facto_class, start_comp, end_comp, n_repeats=50):
+    def plot_multiple_single_factors_scatter(self, facto_class, start_comp, end_comp):
         plt.figure(figsize=(16, 20))
         for nc in range(start_comp, end_comp):
             print('.', end='')
             plt.subplot(4, 3, nc - start_comp + 1)
-            self.single_factor_scatter(facto_class, nc, n_repeats, show=False)
+            self.single_factor_scatter(facto_class, nc, show=False)
         plt.suptitle("%s; t-SNE clustering for %d repeats of %s" %
-                     (self.shortname, n_repeats, facto_class.__name__[:3]), size=14)
+                     (self.shortname, self.n_repeats, facto_class.__name__[:3]), size=14)
         plt.show()
 
-    def investigate_cluster_statistics(self, facto_class, n_components, n_repeats,
+    def investigate_cluster_statistics(self, facto_class, n_components,
                                        pca_reduced_dims=20, doprint=False):
         # The given facto is not actually executed, just used to select the appropriate cached
         # .pkl files which were computed above.
-        metagene_list = self.read_cached_factors(facto_class, n_components, n_repeats)
+        metagene_list = self.read_cached_factors(facto_class, n_components)
         stacked_metagenes = np.hstack(metagene_list).T
         flipped_metagenes = self.flip_metagenes(stacked_metagenes)
 
         pca = PCA(n_components=min(pca_reduced_dims, len(metagene_list)))
         kmeans = KMeans(n_clusters=n_components, random_state=0).fit(
             pca.fit_transform(flipped_metagenes))
-        cluster_table = np.reshape(kmeans.labels_, (n_repeats, n_components))
+        cluster_table = np.reshape(kmeans.labels_, (self.n_repeats, n_components))
         clusters_are_aligned = np.all(
-            [cluster_table[r, :] == cluster_table[0, :] for r in range(n_repeats)])
+            [cluster_table[r, :] == cluster_table[0, :] for r in range(self.n_repeats)])
         if doprint:
-            for r in range(n_repeats):
+            for r in range(self.n_repeats):
                 print(r, cluster_table[r, :])
             print()
         return clusters_are_aligned
 
-    def investigate_multiple_cluster_statistics(self, start, end, n_repeats=50):
+    def investigate_multiple_cluster_statistics(self, start, end):
         # Lets see if clusters are assined consistently for NMF and ICA across a
         # range of n_components
         print("%6s %10s %10s %10s" %
               ('', NMF_Factorizer.__name__, ICA_Factorizer.__name__, PCA_Factorizer.__name__))
         for nc in range(start, end):
-            nmf_consistent = self.investigate_cluster_statistics(NMF_Factorizer, nc, n_repeats)
-            ica_consistent = self.investigate_cluster_statistics(ICA_Factorizer, nc, n_repeats)
-            pca_consistent = self.investigate_cluster_statistics(PCA_Factorizer, nc, n_repeats)
+            nmf_consistent = self.investigate_cluster_statistics(NMF_Factorizer, nc)
+            ica_consistent = self.investigate_cluster_statistics(ICA_Factorizer, nc)
+            pca_consistent = self.investigate_cluster_statistics(PCA_Factorizer, nc)
             print("%6d%10s %10s %10s" % (nc, nmf_consistent, ica_consistent, pca_consistent))
 
-    def compute_silhouette_score_and_median(self, facto_class, n_components, n_repeats,
+    def compute_silhouette_score_and_median(self, facto_class, n_components,
                                             pca_reduced_dims=20, doprint=False):
 
         # Get repeated metagenes for this n_components into a matrix of shape
         # (n_components*n_repeats, genes)
-        metagene_list = self.read_cached_factors(facto_class, n_components, n_repeats)
+        metagene_list = self.read_cached_factors(facto_class, n_components)
         assert metagene_list[0].shape[0] == self.n_genes
         stacked_metagenes = np.hstack(metagene_list).T
         flipped_metagenes = np.array(self.flip_metagenes(stacked_metagenes))
-        assert flipped_metagenes.shape[0] == n_components * n_repeats
+        assert flipped_metagenes.shape[0] == n_components * self.n_repeats
 
         # Run k-means clustering, but reduce to a sensible number of dimensions first
         pca = PCA(n_components=min(pca_reduced_dims, len(metagene_list)))
         kmeans = KMeans(n_clusters=n_components, random_state=0).fit(
             pca.fit_transform(flipped_metagenes))
         cluster_labels = kmeans.fit_predict(flipped_metagenes)
-        cluster_label_table = np.reshape(cluster_labels, (n_repeats, n_components))
+        cluster_label_table = np.reshape(cluster_labels, (self.n_repeats, n_components))
         silhouette_avg = silhouette_score(flipped_metagenes, cluster_labels)
 
         if doprint:
-            for r in range(n_repeats):
+            for r in range(self.n_repeats):
                 print(r, cluster_label_table[r, :])
 
             print("For n_clusters =", n_components,
@@ -296,22 +296,22 @@ class FactorClustering:
 
         return silhouette_avg, median_metagenes_matrix
 
-    def save_multiple_median_metagenes_to_factors(self, facto_class, start, end, n_repeats):
+    def save_multiple_median_metagenes_to_factors(self, facto_class, start, end):
         os.makedirs('../Factors/%s' % self.basename, exist_ok=True)
         for nc in range(start, end):
             facto_prefix = facto_class.__name__[:3]
             fname = '../Factors/%s/%s_median_factor_%d.csv' % (self.basename, facto_prefix, nc)
             _, median_metagenes = self.compute_silhouette_score_and_median(
-                facto_class, nc, n_repeats)
+                facto_class, nc)
             np.savetxt(fname, median_metagenes, delimiter='\t')
             print('\r%d/%d' % (nc, end), end='')
 
-    def find_best_n_components(self, facto_class, start, end, n_repeats, doprint=False,
+    def find_best_n_components(self, facto_class, start, end, doprint=False,
                                doshow=False):
         scores = {}
         for n_components in range(start, end):
             scores[n_components], _ = self.compute_silhouette_score_and_median(
-                facto_class, n_components, n_repeats, doprint=False)
+                facto_class, n_components, doprint=False)
             if doprint:
                 print("%d: %8.6f" % (n_components, scores[n_components]))
         if doshow:
@@ -325,39 +325,38 @@ class FactorClustering:
 
 # noinspection PyUnusedLocal,PyUnreachableCode
 def one_run(basename, method):
-    fc = FactorClustering(basename, method)
+    fc = FactorClustering(basename, 50, method)
     fc.read_expression_matrix()
-    n_repeats = 50
 
     if True:
         # Beware - this will take hours (for the full size dataset)!
         #
-        fc.compute_and_cache_multiple_factor_repeats(2, 14, n_repeats, force=False)
+        fc.compute_and_cache_multiple_factor_repeats(2, 14, force=False)
 
     if False:
-        fc.plot_multiple_combined_factors_scatter(2, 7, n_repeats)
+        fc.plot_multiple_combined_factors_scatter(2, 7)
 
     if False:
-        fc.investigate_multiple_cluster_statistics(2, 21, n_repeats)
+        fc.investigate_multiple_cluster_statistics(2, 21)
 
     if False:
-        fc.find_best_n_components(NMF_Factorizer, 2, 7, n_repeats, doprint=True, doshow=True)
-        fc.find_best_n_components(ICA_Factorizer, 2, 7, n_repeats, doprint=True, doshow=True)
-        fc.find_best_n_components(PCA_Factorizer, 2, 7, n_repeats, doprint=True, doshow=True)
+        fc.find_best_n_components(NMF_Factorizer, 2, 7, doprint=True, doshow=True)
+        fc.find_best_n_components(ICA_Factorizer, 2, 7, doprint=True, doshow=True)
+        fc.find_best_n_components(PCA_Factorizer, 2, 7, doprint=True, doshow=True)
 
     if False:
-        fc.single_factor_scatter(NMF_Factorizer, 8, n_repeats)
-        fc.single_factor_scatter(ICA_Factorizer, 8, n_repeats)
-        fc.single_factor_scatter(PCA_Factorizer, 8, n_repeats)
+        fc.single_factor_scatter(NMF_Factorizer, 8)
+        fc.single_factor_scatter(ICA_Factorizer, 8)
+        fc.single_factor_scatter(PCA_Factorizer, 8)
 
     if False:
-        fc.plot_multiple_single_factors_scatter(NMF_Factorizer, 2, 7, n_repeats)
-        fc.plot_multiple_single_factors_scatter(ICA_Factorizer, 2, 7, n_repeats)
-        fc.plot_multiple_single_factors_scatter(PCA_Factorizer, 2, 7, n_repeats)
+        fc.plot_multiple_single_factors_scatter(NMF_Factorizer, 2, 7)
+        fc.plot_multiple_single_factors_scatter(ICA_Factorizer, 2, 7)
+        fc.plot_multiple_single_factors_scatter(PCA_Factorizer, 2, 7)
 
     if False:
         for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
-            fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 21, n_repeats)
+            fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 21)
 
 
 def main():
