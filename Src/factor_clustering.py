@@ -51,49 +51,7 @@ class FactorClustering:
         print(self.n_genes, "genes")
         print(self.n_patients, "patients")
 
-    @staticmethod
-    def l2_norm_diff(m1, m2):
-        return np.sqrt(np.mean((m1 - m2) ** 2))
 
-    # Angle calculation
-    @staticmethod
-    def calc_angle(v1, v2, show=False):
-        dotp = np.dot(v1, v2)
-        v1_mag = np.sqrt(np.sum(v1 * v1))
-        v2_mag = np.sqrt(np.sum(v2 * v2))
-        costheta = dotp / (v1_mag * v2_mag)
-
-        angleRad = np.arccos(min(costheta, 1.0))
-        angleDeg = angleRad * (180 / np.pi)
-
-        if show:
-            print("v1:\n")
-            print(v1)
-            print("\nv2:")
-            print(v2)
-            print("\nv1 Mag.:%6.4f" % v1_mag)
-            print("\nv2 Mag.:%6.4f" % v2_mag)
-            print("v1 . v2 = %6.4f" % dotp)
-            print(dotp / (v1_mag * v2_mag))
-            print("Angle between v1 and v2 = %5.1f degrees." % angleDeg)
-        return angleDeg
-
-    # ## Angle of vectors in a high dimensioned space
-    @staticmethod
-    def demonstrate_angles_in_high_dimensions(dims=50000, n=1000):
-        # Demonstrating that in a 20,000 dimensioned space, any two random vectors will be at
-        # very close to 90 degrees!
-        alist = []
-        rvs = np.random.randn(n, dims)
-        for i in range(n - 1):
-            v1 = rvs[i, :]
-            v2 = rvs[i + 1, :]
-            a = FactorClustering.calc_angle(v1, v2)
-            alist += [a]
-
-        plt.hist(alist, bins=int(np.sqrt(n)))
-        plt.title("Mean=%6.2f, SD=%6.2f degrees" % (np.mean(alist), np.std(alist)))
-        # plt.show()
 
     def cached_factor_repeats_filename(self, facto_class, n_components, n_repeats):
         # ## Multiple cached runs of NMF and ICA
