@@ -23,24 +23,6 @@ class TestFactorClustering(TestCase):
         assert fc.expression_df is not None
         assert fc.expression_matrix is not None
 
-    def test_l2_norm_diff(self):
-        m1 = np.array([0, 0, 1])
-        m2 = np.array([0, 0, 1])
-        m3 = np.array([1, 1, 0])
-
-        assert FactorClustering.l2_norm_diff(m1, m2) == 0
-        assert np.isclose(FactorClustering.l2_norm_diff(m1, m3), 1)
-
-    def test_calc_angle(self):
-        m1 = np.array([0, 0, 1])
-        m2 = np.array([0, 0, 1])
-        m3 = np.array([0, 1, 0])
-        assert np.isclose(FactorClustering.calc_angle(m1, m2), 0)
-        assert np.isclose(FactorClustering.calc_angle(m1, m3), 90)
-
-    def test_demonstrate_angles_in_high_dimensions(self):
-        FactorClustering.demonstrate_angles_in_high_dimensions(1000, 100)
-
     def test_cached_factor_repeats_filename(self):
         fc = self.clustering()
         pickle_fname = fc.cached_factor_repeats_filename(NMF_Factorizer, 5, 10)
