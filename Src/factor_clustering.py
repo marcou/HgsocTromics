@@ -26,9 +26,11 @@ from factorizer_wrappers import ICA_Factorizer, NMF_Factorizer, PCA_Factorizer
 class FactorClustering:
     # ## Read the expression matrix
     # This is repeated code, should be factored out...
-    def __init__(self, basename):
-        self.basename = basename            # Eg "Mini_Expression"
+    def __init__(self, basename, method='bootstrap'):
+        assert method in ['bootstrap', 'fixed']
+        self.basename = basename  # Eg "Mini_Expression"
         self.shortname = self.basename[:4]  # e.g. "Mini"
+        self.method = method
         self.expression_df = None
         self.expression_matrix = None
         self.expression_filename = None
@@ -56,8 +58,8 @@ class FactorClustering:
         # Run NMF and ICA for a range of components, with repeats and save into .pkl fles
         # for later use.
 
-        pickle_fname = "../Cache/%s/FactorClustering/%s_%d_%d.pkl" % \
-                       (self.basename, facto_class.__name__, n_components, n_repeats)
+        pickle_fname = "../Cache/%s/FactorClustering/%s_%d_%d_%s.pkl" % \
+                       (self.basename, facto_class.__name__, n_components, n_repeats, self.method)
         return pickle_fname
 
     def read_cached_factors(self, facto_class, n_components, n_repeats):
@@ -75,6 +77,7 @@ class FactorClustering:
         is skipped if the cache file already exists.
         """
         assert self.expression_matrix is not None
+        assert self.method in ['bootstrap', 'fixed']
         pickle_fname = self.cached_factor_repeats_filename(
             facto_class, n_components, n_repeats)
         p = Path(pickle_fname)
@@ -83,15 +86,19 @@ class FactorClustering:
             print(pickle_fname)
             metagene_list = []
             V = self.expression_matrix
-            n = V.shape[1]   # number of patients
+            n = V.shape[1]  # number of patients
             for i in range(n_repeats):
                 facto = facto_class(n_components=n_components, max_iter=5000, tol=0.01,
                                     random_state=np.random.randint(10000))
-                # Make a boostrap sample. The resample() method works on rows, hence the need
-                # for transpose in and out.
-                resampled_V = resample(V.T, n_samples=n).T
-                assert resampled_V.shape == V.shape
-                facto.fit(resampled_V)
+                if self.method == 'bootstrap':
+                    # Make a boostrap sample. The resample() method works on rows, hence the need
+                    # for transpose in and out.
+                    resampled_V = resample(V.T, n_samples=n).T
+                    assert resampled_V.shape == V.shape
+                    facto.fit(resampled_V)
+                else:
+                    # fixed sampling
+                    facto.fit(V)
                 metagene_list += [facto.get_W()]
                 print('\r%d/%d' % (i + 1, n_repeats), end='')
             print()
@@ -317,24 +324,23 @@ class FactorClustering:
 
 
 # noinspection PyUnusedLocal,PyUnreachableCode
-def main():
-    possible_datasets = {1: 'Mini_Expression', 2: 'HGSOC_Protein_Expression', 3: 'TCGA_OV_VST'}
-    fc = FactorClustering(possible_datasets[1])
+def one_run(basename, method):
+    fc = FactorClustering(basename, method)
     fc.read_expression_matrix()
-
     n_repeats = 50
-    if False:
-        # Beware - this will take hours (for the full size dataset)!
-        #
-        fc.compute_and_cache_multiple_factor_repeats(2, 21, n_repeats, force=False)
 
     if True:
+        # Beware - this will take hours (for the full size dataset)!
+        #
+        fc.compute_and_cache_multiple_factor_repeats(2, 14, n_repeats, force=False)
+
+    if False:
         fc.plot_multiple_combined_factors_scatter(2, 7, n_repeats)
 
     if False:
         fc.investigate_multiple_cluster_statistics(2, 21, n_repeats)
 
-    if True:
+    if False:
         fc.find_best_n_components(NMF_Factorizer, 2, 7, n_repeats, doprint=True, doshow=True)
         fc.find_best_n_components(ICA_Factorizer, 2, 7, n_repeats, doprint=True, doshow=True)
         fc.find_best_n_components(PCA_Factorizer, 2, 7, n_repeats, doprint=True, doshow=True)
@@ -344,7 +350,7 @@ def main():
         fc.single_factor_scatter(ICA_Factorizer, 8, n_repeats)
         fc.single_factor_scatter(PCA_Factorizer, 8, n_repeats)
 
-    if True:
+    if False:
         fc.plot_multiple_single_factors_scatter(NMF_Factorizer, 2, 7, n_repeats)
         fc.plot_multiple_single_factors_scatter(ICA_Factorizer, 2, 7, n_repeats)
         fc.plot_multiple_single_factors_scatter(PCA_Factorizer, 2, 7, n_repeats)
@@ -352,6 +358,16 @@ def main():
     if False:
         for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
             fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 21, n_repeats)
+
+
+def main():
+    possible_datasets = {1: 'Mini_Expression', 2: 'HGSOC_Protein_Expression', 3: 'TCGA_OV_VST'}
+
+    one_run(possible_datasets[2], 'bootstrap')
+    one_run(possible_datasets[2], 'fixed')
+
+    one_run(possible_datasets[3], 'bootstrap')
+    one_run(possible_datasets[3], 'fixed')
 
 
 if __name__ == '__main__':

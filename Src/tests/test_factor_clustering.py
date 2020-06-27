@@ -24,28 +24,40 @@ class TestFactorClustering(TestCase):
         assert fc.expression_matrix is not None
 
     def test_cached_factor_repeats_filename(self):
-        fc = self.clustering()
-        pickle_fname = fc.cached_factor_repeats_filename(NMF_Factorizer, 5, 10)
+        fc1 = FactorClustering('dummy', 'bootstrap')
+        pickle_fname = fc1.cached_factor_repeats_filename(NMF_Factorizer, 5, 10)
         print(pickle_fname)
         assert 'NMF' in pickle_fname
+        assert 'bootstrap' in pickle_fname
+
+        fc2 = FactorClustering('dummy', 'fixed')
+        pickle_fname = fc2.cached_factor_repeats_filename(NMF_Factorizer, 5, 10)
+        print(pickle_fname)
+        assert 'NMF' in pickle_fname
+        assert 'fixed' in pickle_fname
 
     def test_compute_and_cache_one_factor_repeats(self):
-        fc = self.clustering()
         n_components = 4
         n_repeats = 10
 
-        def one_test(facto_class):
+        def one_test(facto_class, method, expect_randomness):
+            fc = FactorClustering(self.clustering().basename, method)
+            fc.read_expression_matrix()
             pkl_fname = fc.compute_and_cache_one_factor_repeats(
                 facto_class, n_components, n_repeats)
             assert os.path.exists(pkl_fname)
-            metagene_list = fc.read_cached_factors(ICA_Factorizer, n_components, n_repeats)
+            metagene_list = fc.read_cached_factors(facto_class, n_components, n_repeats)
             # Ensure there is randomness in the repeat results!
-            assert not np.array_equal(metagene_list[0], metagene_list[1])
+            if expect_randomness:
+                assert not np.array_equal(metagene_list[0], metagene_list[1])
+            else:
+                assert np.array_equal(metagene_list[0], metagene_list[1])
             metagene_list_2 = fc.read_cached_factors(facto_class, n_components, n_repeats)
             assert len(metagene_list_2) == n_repeats
 
-        one_test(NMF_Factorizer)
-        one_test(PCA_Factorizer)
+        one_test(NMF_Factorizer, 'bootstrap', expect_randomness=True)
+        one_test(PCA_Factorizer, 'bootstrap', expect_randomness=True)
+        one_test(PCA_Factorizer, 'fixed', expect_randomness=False)
 
     def test_single_factor_scatter(self):
         fc = self.clustering()
