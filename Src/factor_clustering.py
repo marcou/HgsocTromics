@@ -61,6 +61,7 @@ class FactorClustering:
         print(self.n_patients, "patients")
 
     def cached_factor_repeats_filename(self, facto_class, n_components):
+
         # ## Multiple cached runs of NMF and ICA
         # Run NMF and ICA for a range of components, with repeats and save into .pkl fles
         # for later use.
