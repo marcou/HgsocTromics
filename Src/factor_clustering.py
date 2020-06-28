@@ -37,6 +37,10 @@ class FactorClustering:
         self.expression_filename = None
         self.n_genes = None
         self.n_patients = None
+        self.colours = {'NMF':'r', 'ICA': 'g', 'PCA':'b'}
+
+    def colour(self, facto):
+        return self.colours[facto.__name__[:3]]
 
     def read_expression_matrix(self):
         # Read in expression spreadsheet which has been processed (see end of notebook)
@@ -154,11 +158,11 @@ class FactorClustering:
         # First plot the scattered points
         (Y, score, median_metagenes) = self.compute_tsne_score_medians(facto_class, n_components)
         plt.scatter(Y[:n_components * self.n_repeats, 0], Y[:n_components * self.n_repeats, 1],
-                    s=3, label='one sample')
+                    c=self.colour(facto_class), s=3, label='one sample')
 
         # Then plot the medians
         plt.scatter(Y[n_components * self.n_repeats:, 0], Y[n_components * self.n_repeats:, 1],
-                    s=50, marker='+', label='cluster median')
+                    c='k', s=100, marker='+', label='cluster median')
 
         plt.xlabel("t-SNE dimension 1")
         plt.ylabel("t-SNE dimension 2")
@@ -217,9 +221,9 @@ class FactorClustering:
         Y = self.compute_combined_tsne(n_components)
         Ys = np.reshape(Y, (3, n_components * self.n_repeats, 2))
 
-        plt.scatter(Ys[0, :, 0], Ys[0, :, 1], s=5, label='NMF')
-        plt.scatter(Ys[1, :, 0], Ys[1, :, 1], s=5, label='ICA')
-        plt.scatter(Ys[2, :, 0], Ys[2, :, 1], s=5, label='PCA')
+        plt.scatter(Ys[0, :, 0], Ys[0, :, 1], c=self.colour(NMF_Factorizer), s=5, label='NMF')
+        plt.scatter(Ys[1, :, 0], Ys[1, :, 1], c=self.colour(ICA_Factorizer), s=5, label='ICA')
+        plt.scatter(Ys[2, :, 0], Ys[2, :, 1], c=self.colour(PCA_Factorizer), s=5, label='PCA')
 
         plt.xlabel("t-SNE dimension 1")
         plt.ylabel("t-SNE dimension 2")
@@ -330,23 +334,22 @@ class FactorClustering:
         for nc in range(start, end):
             facto_prefix = facto_class.__name__[:3]
             fname = '../Factors/%s/%s_median_factor_%d.csv' % (self.basename, facto_prefix, nc)
-            _, median_metagenes = self.compute_silhouette_score_and_median(
-                facto_class, nc)
+            _, _, median_metagenes = self.compute_tsne_score_medians(facto_class, nc)
             np.savetxt(fname, median_metagenes, delimiter='\t')
             print('\r%d/%d' % (nc, end), end='')
 
     def plot_silhouette_scores(self, start, end, show=False):
-        NMF_scores, ICA_scores, PCA_scores = {}, {}, {}
+        NMF_sc, ICA_sc, PCA_sc = {}, {}, {}
         compute = self.compute_tsne_score_medians
         for nc in range(start, end):
             # compute function returns (tsne, score, median), so we want [1]
-            NMF_scores[nc] = compute(NMF_Factorizer, nc)[1]
-            ICA_scores[nc] = compute(ICA_Factorizer, nc)[1]
-            PCA_scores[nc] = compute(PCA_Factorizer, nc)[1]
+            NMF_sc[nc] = compute(NMF_Factorizer, nc)[1]
+            ICA_sc[nc] = compute(ICA_Factorizer, nc)[1]
+            PCA_sc[nc] = compute(PCA_Factorizer, nc)[1]
 
-        plt.plot(NMF_scores.keys(), NMF_scores.values(), '-o', label='NMF')
-        plt.plot(ICA_scores.keys(), ICA_scores.values(), '-o', label='ICA')
-        plt.plot(PCA_scores.keys(), PCA_scores.values(), '-o', label='PCA')
+        plt.plot(NMF_sc.keys(), NMF_sc.values(), '-o', c=self.colour(NMF_Factorizer), label='NMF')
+        plt.plot(ICA_sc.keys(), ICA_sc.values(), '-o', c=self.colour(ICA_Factorizer), label='ICA')
+        plt.plot(PCA_sc.keys(), PCA_sc.values(), '-o', c=self.colour(PCA_Factorizer), label='PCA')
         plt.xlabel('n_components')
         plt.ylabel('Silhouette score')
         plt.xticks(np.arange(start, end, step=1))
@@ -356,13 +359,12 @@ class FactorClustering:
         if show:
             plt.show()
 
-
 # noinspection PyUnusedLocal,PyUnreachableCode
 def one_run(basename, method):
     fc = FactorClustering(basename, 50, method)
     fc.read_expression_matrix()
 
-    if True:
+    if False:
         # Beware - this will take hours (for the full size dataset)!
         #
         fc.compute_and_cache_multiple_factor_repeats(2, 14, force=False)
@@ -388,9 +390,10 @@ def one_run(basename, method):
         fc.plot_multiple_single_factors_scatter(ICA_Factorizer, 2, 7)
         fc.plot_multiple_single_factors_scatter(PCA_Factorizer, 2, 7)
 
-    if False:
-        for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
-            fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 21)
+    if True:
+        if fc.method == 'bootstrap':
+            for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
+                fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 14)
 
 
 def main():

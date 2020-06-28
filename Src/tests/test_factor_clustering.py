@@ -18,6 +18,11 @@ class TestFactorClustering(TestCase):
             self._clustering.read_expression_matrix()
         return self._clustering
 
+    def test_colour(self):
+        fc = self.clustering()
+        for facto in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
+            print(facto.__name__, fc.colour(facto))
+
     def test_read_expression_matrix(self):
         fc = self.clustering()
         assert fc.expression_df is not None
