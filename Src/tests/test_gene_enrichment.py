@@ -8,7 +8,7 @@ from gene_enrichment import GeneEnrichment
 class TestGeneEnrichment(unittest.TestCase):
     # noinspection PyTypeChecker
     def setUp(self):
-        self.ge = GeneEnrichment('Mini_Expression')
+        self.ge = GeneEnrichment('Mini_Expression', 'DUMMY')
         np.random.seed(42)
         self.random_metagene_matrix = np.random.randn(100, 3)
 

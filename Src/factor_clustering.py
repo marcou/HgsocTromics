@@ -30,6 +30,7 @@ class FactorClustering:
         assert method in ['bootstrap', 'fixed']
         self.basename = basename  # Eg "Mini_Expression"
         self.shortname = self.basename[:4]  # e.g. "Mini"
+        self.cache_dir = '../Cache/%s/FactorClustering/' % self.basename
         self.method = method
         self.n_repeats = n_repeats
         self.expression_df = None
@@ -38,6 +39,7 @@ class FactorClustering:
         self.n_genes = None
         self.n_patients = None
         self.colours = {'NMF':'r', 'ICA': 'g', 'PCA':'b'}
+        os.makedirs(self.cache_dir, exist_ok=True)
 
     def colour(self, facto):
         return self.colours[facto.__name__[:3]]
@@ -63,9 +65,8 @@ class FactorClustering:
         # Run NMF and ICA for a range of components, with repeats and save into .pkl fles
         # for later use.
 
-        pickle_fname = "../Cache/%s/FactorClustering/%s_%d_%d_%s.pkl" % \
-                       (self.basename, facto_class.__name__, n_components,
-                        self.n_repeats, self.method)
+        pickle_fname = self.cache_dir + "%s_%d_%d_%s.pkl" % \
+                       (facto_class.__name__, n_components, self.n_repeats, self.method)
         return pickle_fname
 
     def read_cached_factors(self, facto_class, n_components):
@@ -128,8 +129,8 @@ class FactorClustering:
         # t-SNE projection.  Also get median metagenes and score.
 
         facto_name = facto_class.__name__[:3]
-        tsne_cache_filename = '../Cache/%s/tsne_score_medians_%s_%d_%d_%s.pkl' % \
-                              (self.basename, facto_name, n_components, self.n_repeats, self.method)
+        tsne_cache_filename = self.cache_dir + 'tsne_score_medians_%s_%d_%d_%s.pkl' % \
+                              (facto_name, n_components, self.n_repeats, self.method)
 
         if not os.path.exists(tsne_cache_filename):
             metagene_list = self.read_cached_factors(facto_class, n_components)
@@ -189,8 +190,8 @@ class FactorClustering:
 
         # Read back the pickle files containing multiple runs. One file for each n_components
         # for each of NMF and ICA
-        combined_tsne_cache_filename = '../Cache/%s/combined_tsne_%d_%d_%s.pkl' % \
-                              (self.basename,  n_components, self.n_repeats, self.method)
+        combined_tsne_cache_filename = self.cache_dir + 'combined_tsne_%d_%d_%s.pkl' % \
+                              (n_components, self.n_repeats, self.method)
         if not os.path.exists(combined_tsne_cache_filename):
             nmf_mg_list = self.read_cached_factors(NMF_Factorizer, n_components)
             ica_mg_list = self.read_cached_factors(ICA_Factorizer, n_components)

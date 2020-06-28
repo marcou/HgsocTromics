@@ -1,4 +1,5 @@
 # ## Gene enrichment analysis using GOATOOLS
+import os
 
 from goatools import obo_parser
 from goatools.go_enrichment import GOEnrichmentStudy
@@ -12,10 +13,12 @@ import pickle
 # noinspection PyStringFormat
 class GeneEnrichment:
     # Analyse standard deviation of components
-    def __init__(self, basename):
+    def __init__(self, basename, prefix):
         self.basename = basename
+        self.prefix = prefix   # prefix to results files
         self._gene_symbols = None
-        self.cache_dir = '../Cache/%s/' % self.basename
+        self.cache_dir = '../Cache/%s/GeneEnrichment/' % self.basename
+        os.makedirs(self.cache_dir, exist_ok=True)
 
     def gene_symbols(self):
         if self._gene_symbols is None:
@@ -80,7 +83,7 @@ class GeneEnrichment:
         return ranked_genes_by_component
 
     def _perform_gene_enrichment_analysis_one_component(self, ci, gea_results_by_component, gea):
-        tsv_name = self.cache_dir + 'goa_results_C%d.tsv' % ci
+        tsv_name = self.cache_dir + '%s_gea_C%d.tsv' % (self.prefix, ci)
         if len(gea_results_by_component[ci]) > 0:
             with open(tsv_name, 'w') as f:
                 gea.prt_tsv(f, gea_results_by_component[ci])
@@ -147,18 +150,22 @@ class GeneEnrichment:
         # Merge the per-component dataframes into a single one
         gea_all_sig_results_df = pd.DataFrame()
         gea_all_sig_results_df = gea_all_sig_results_df.append(gea_results_df_by_component)
-        gea_all_sig_results_df.to_csv(self.cache_dir + 'gea_all_sig_results.tsv', sep='\t')
+
+        gea_all_sig_results_df.to_csv(self.cache_dir + '%s_gea_all.tsv' % self.prefix, sep='\t')
 
 
 # noinspection PyUnreachableCode
 def main():
-    if False:
-        ge = GeneEnrichment('Mini_Expression')
-        metagenes = ge.read_metagene_matrix('RandomTest_3.csv')
-    else:
-        ge = GeneEnrichment('TCGA_OV_VST')
-        metagenes = ge.read_metagene_matrix('S_TCGA_OV_VST_ica_numerical.txt_7.num')
+    ge = GeneEnrichment('TCGA_OV_VST', 'NMF_3')
+    metagenes = ge.read_metagene_matrix('NMF_median_factor_3.csv')
+    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
+    ge = GeneEnrichment('TCGA_OV_VST', 'ICA_3')
+    metagenes = ge.read_metagene_matrix('ICA_median_factor_3.csv')
+    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+
+    ge = GeneEnrichment('TCGA_OV_VST', 'PCA_3')
+    metagenes = ge.read_metagene_matrix('PCA_median_factor_3.csv')
     ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
 
