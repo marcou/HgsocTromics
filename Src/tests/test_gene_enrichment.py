@@ -29,7 +29,23 @@ class TestGeneEnrichment(unittest.TestCase):
         self.ge.investigate_rank_threshold(self.random_metagene_matrix)
 
     def test_select_influential_genes(self):
-        self.ge.select_influential_genes(self.random_metagene_matrix[:, 0])
+        # NMF type example
+        positive_metagene = np.random.randn(100) + 2.0
+        positive_metagene[positive_metagene < 0] = 0
+        positive_metagene[[0, 10]] = 123.0    # big number for two genes
+        selection = self.ge.select_influential_genes(positive_metagene)
+        assert len(selection) == 2
+        assert selection[0] == self.ge.gene_symbols()[0]
+        assert selection[1] == self.ge.gene_symbols()[10]
+
+        # ICA or PCA type example
+        mixed_metagene = np.random.randn(100)
+        mixed_metagene[0] = 123.0
+        mixed_metagene[10] = -123.0
+        selection = self.ge.select_influential_genes(mixed_metagene)
+        assert len(selection) == 2
+        assert selection[0] == self.ge.gene_symbols()[0]
+        assert selection[1] == self.ge.gene_symbols()[10]
 
     def test_ranked_genes_by_component(self):
         rankings = self.ge.ranked_genes_by_component(self.random_metagene_matrix)

@@ -43,30 +43,34 @@ class GeneEnrichment:
         assert metagene_matrix.ndim == 2
         return metagene_matrix
 
-    @staticmethod
-    def investigate_rank_threshold(metagene_matrix):
+    def investigate_rank_threshold(self, metagene_matrix):
         # Analyse standard deviation of components
         assert metagene_matrix.ndim == 2
         n_stddev = 3.0
         for ci in range(metagene_matrix.shape[1]):
             metagene = metagene_matrix[:, ci]
+            selection = self.select_influential_genes(metagene)
             stddev = np.std(metagene)
-            threshold = n_stddev * stddev
-            num_above_threshold = len(metagene[abs(metagene) > threshold])
             print("Component %d, SD=%4.2f, #genes outside %3.1f SDs=%d" % (
-                ci, stddev, n_stddev, num_above_threshold))
+                ci, stddev, n_stddev, len(selection)))
 
     def select_influential_genes(self, metagene):
         assert metagene.ndim == 1
         n_stddev = 3.0
         influence = abs(metagene)
         stddev = np.std(metagene)
+        mean = np.mean(metagene)
+        min = np.min(metagene)
         threshold = n_stddev * stddev
         symbols = self.gene_symbols()
         assert len(symbols) == len(metagene)
         gixpairs = zip(symbols, influence)
 
-        selection = [symbol for (symbol, v) in gixpairs if abs(v) > threshold]
+        if min >= 0:
+            # Looks like its MNF...
+            selection = [symbol for (symbol, v) in gixpairs if v-mean > threshold]
+        else:
+            selection = [symbol for (symbol, v) in gixpairs if abs(v-mean) > threshold]
 
         return selection
 
@@ -76,10 +80,6 @@ class GeneEnrichment:
         for ci in range(metagene_matrix.shape[1]):
             _genes = self.select_influential_genes(W[:, ci])
             ranked_genes_by_component[ci] = _genes
-            if oneperline:
-                print("Comp. %d: \n%s\n" % (ci, '\n'.join(_genes)))
-            else:
-                print("Comp. %d: %s" % (ci, ' '.join(_genes)))
         return ranked_genes_by_component
 
     def _perform_gene_enrichment_analysis_one_component(self, ci, gea_results_by_component, gea):
@@ -135,6 +135,7 @@ class GeneEnrichment:
         rankings = self.ranked_genes_by_component(metagene_matrix)
         for ci in range(n_comps):
             study_genes = rankings[ci]
+            print('Comp. %d: %s...' % (ci, str(study_genes[:10])))
             gea_results_by_component[ci] = gea.run_study(study_genes)
 
         # Get results into a dataframe per component.  Easiest way is to use routine to
@@ -150,6 +151,7 @@ class GeneEnrichment:
         # Merge the per-component dataframes into a single one
         gea_all_sig_results_df = pd.DataFrame()
         gea_all_sig_results_df = gea_all_sig_results_df.append(gea_results_df_by_component)
+
 
         gea_all_sig_results_df.to_csv(self.cache_dir + '%s_gea_all.tsv' % self.prefix, sep='\t')
 

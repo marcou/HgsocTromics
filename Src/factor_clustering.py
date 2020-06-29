@@ -38,7 +38,9 @@ class FactorClustering:
         self.expression_filename = None
         self.n_genes = None
         self.n_patients = None
-        self.colours = {'NMF':'r', 'ICA': 'g', 'PCA':'b'}
+        self.colours = {'NMF': u'#1f77b4', 'ICA': u'#ff7f0e', 'PCA': u'#2ca02c'}
+                                # these are from the standard matplotlib colour cycle
+
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def colour(self, facto):
