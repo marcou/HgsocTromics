@@ -67,7 +67,7 @@ class TestFactorClustering(TestCase):
 
     def test_compute_and_cache_multiple_factor_repeats(self):
         fc = self.clustering()
-        fc.compute_and_cache_multiple_factor_repeats(4, 6, force=False)
+        fc.compute_and_cache_multiple_factor_repeats([4, 5], force=False)
 
     def compute_tsne_score_medians(self):
         fc = self.clustering()
@@ -89,20 +89,20 @@ class TestFactorClustering(TestCase):
     def test_compute_combined_tsne(self):
         fc = self.clustering()
         n_components = 3
-        fc.compute_and_cache_multiple_factor_repeats(3, 4, force=False)
+        fc.compute_and_cache_multiple_factor_repeats([3], force=False)
         Y = fc.compute_combined_tsne(n_components)
         assert Y.shape == (3 * n_components * fc.n_repeats, 2)
 
     def test_plot_combined_factors_scatter(self):
         fc = self.clustering()
-        fc.compute_and_cache_multiple_factor_repeats(4, 5, force=False)
+        fc.compute_and_cache_multiple_factor_repeats([4], force=False)
         fc.plot_combined_factors_scatter(4, show=False)
 
     def test_plot_multiple_combined_factors_scatter(self):
-        n_components_range = 2, 4
+        nc_list = [2, 3]
         fc = self.clustering()
-        fc.compute_and_cache_multiple_factor_repeats(*n_components_range, force=False)
-        fc.plot_multiple_combined_factors_scatter(*n_components_range, show=False)
+        fc.compute_and_cache_multiple_factor_repeats(nc_list, force=False)
+        fc.plot_multiple_combined_factors_scatter(nc_list, show=False)
 
     def test_investigate_cluster_statistics(self):
         n_components = 3
@@ -126,11 +126,11 @@ class TestFactorClustering(TestCase):
 
     def test_plot_silhouette_scores(self):
         fc = self.clustering()
-        fc.plot_silhouette_scores(2, 5, show=False)
+        fc.plot_silhouette_scores([2, 3, 4], show=False)
 
     def test_save_multiple_median_metagenes_to_factors(self):
         fc = self.clustering()
-        fc.save_multiple_median_metagenes_to_factors(NMF_Factorizer, start=2, end=5)
+        fc.save_multiple_median_metagenes_to_factors(NMF_Factorizer, [2, 3, 4])
 
 
 if __name__ == '__main__':

@@ -127,11 +127,11 @@ class FactorClustering:
                 pickle.dump(metagene_list, f)
         return pickle_fname
 
-    def compute_and_cache_multiple_factor_repeats(self, start, end, force=True):
+    def compute_and_cache_multiple_factor_repeats(self, nc_list, force=True):
         # This will take several hours, if enabled!
         if True:
             one = self.compute_and_cache_one_factor_repeats
-            for nc in range(start, end):
+            for nc in nc_list:
                 # Note that NMF and ICA require very different tolerances to work correctly
                 one(NMF_Factorizer, nc, max_iter=5000, tol=0.01, force=force)
                 one(ICA_Factorizer, nc, max_iter=5000, tol=0.000001, force=force)
@@ -251,22 +251,22 @@ class FactorClustering:
         if show:
             plt.show()
 
-    def plot_multiple_combined_factors_scatter(self, start_comp, end_comp, show=True):
+    def plot_multiple_combined_factors_scatter(self, nc_list, show=True):
         plt.figure(figsize=(20, 20))
-        for nc in range(start_comp, end_comp):
+        for i, nc in enumerate(nc_list):
             print('.', end='')
-            plt.subplot(4, 3, nc - start_comp + 1)
+            plt.subplot(4, 3, i + 1)
             self.plot_combined_factors_scatter(nc, show=False)
         plt.suptitle("%s; t-SNE clusterings for %d bootstraps of NMF, ICA and PCA" %
                      (self.shortname, self.n_repeats), size=14)
         if show:
             plt.show()
 
-    def plot_multiple_single_factors_scatter(self, facto_class, start_comp, end_comp):
+    def plot_multiple_single_factors_scatter(self, facto_class, nc_list):
         plt.figure(figsize=(16, 20))
-        for nc in range(start_comp, end_comp):
+        for i, nc in enumerate(nc_list):
             print('.', end='')
-            plt.subplot(4, 3, nc - start_comp + 1)
+            plt.subplot(4, 3, i + 1)
             self.plot_single_factor_scatter(facto_class, nc, show=False)
         plt.suptitle("%s; t-SNE clustering for %d repeats of %s" %
                      (self.shortname, self.n_repeats, facto_class.__name__[:3]), size=14)
@@ -344,19 +344,19 @@ class FactorClustering:
 
         return silhouette_avg, median_metagenes_matrix
 
-    def save_multiple_median_metagenes_to_factors(self, facto_class, start, end):
+    def save_multiple_median_metagenes_to_factors(self, facto_class, nc_list):
         os.makedirs('../Factors/%s' % self.basename, exist_ok=True)
-        for nc in range(start, end):
+        for nc in nc_list:
             facto_prefix = facto_class.__name__[:3]
             fname = '../Factors/%s/%s_median_factor_%d.csv' % (self.basename, facto_prefix, nc)
             _, _, median_metagenes = self.compute_tsne_score_medians(facto_class, nc)
             np.savetxt(fname, median_metagenes, delimiter='\t')
-            print('\r%d/%d' % (nc, end), end='')
+            print('\r%d' % nc, end='')
 
-    def plot_silhouette_scores(self, start, end, show=False):
+    def plot_silhouette_scores(self, nc_list, show=False):
         NMF_sc, ICA_sc, PCA_sc = {}, {}, {}
         compute = self.compute_tsne_score_medians
-        for nc in range(start, end):
+        for nc in nc_list:
             # compute function returns (tsne, score, median), so we want [1]
             NMF_sc[nc] = compute(NMF_Factorizer, nc)[1]
             ICA_sc[nc] = compute(ICA_Factorizer, nc)[1]
@@ -367,7 +367,7 @@ class FactorClustering:
         plt.plot(PCA_sc.keys(), PCA_sc.values(), '-o', c=self.colour(PCA_Factorizer), label='PCA')
         plt.xlabel('n_components')
         plt.ylabel('Silhouette score')
-        plt.xticks(np.arange(start, end, step=1))
+        plt.xticks(np.arange(min(nc_list), max(nc_list), step=1))
         plt.legend()
         plt.title("%s; Silhouette plots (%s)" % (self.shortname, self.method))
 
