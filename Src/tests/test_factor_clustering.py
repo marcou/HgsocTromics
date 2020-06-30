@@ -89,13 +89,14 @@ class TestFactorClustering(TestCase):
     def test_compute_combined_tsne(self):
         fc = self.clustering()
         n_components = 3
+        fc.compute_and_cache_multiple_factor_repeats(3, 4, force=False)
         Y = fc.compute_combined_tsne(n_components)
         assert Y.shape == (3 * n_components * fc.n_repeats, 2)
 
     def test_plot_combined_factors_scatter(self):
         fc = self.clustering()
         fc.compute_and_cache_multiple_factor_repeats(4, 5, force=False)
-        fc.plot_combined_factors_scatter(4, show=True)
+        fc.plot_combined_factors_scatter(4, show=False)
 
     def test_plot_multiple_combined_factors_scatter(self):
         n_components_range = 2, 4

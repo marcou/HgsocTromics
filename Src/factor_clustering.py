@@ -38,6 +38,7 @@ class FactorClustering:
         self.expression_filename = None
         self.n_genes = None
         self.n_patients = None
+        self.gene_naming = None
         self.colours = {'NMF': u'#1f77b4', 'ICA': u'#ff7f0e', 'PCA': u'#2ca02c'}
                                 # these are from the standard matplotlib colour cycle
 
@@ -52,12 +53,22 @@ class FactorClustering:
 
         self.expression_filename = '../Data/%s.csv' % self.basename
         self.expression_df = pd.read_csv(self.expression_filename, sep='\t')
-        self.expression_df.set_index('GeneENSG', inplace=True)
-        # assert len(self.expression_df) == 19730  # Only
-        # assert len(self.expression_df.columns) == 80
-        # assert self.expression_df.columns[-1] == 'AOCS_171'
+
+        # Some data comes with Ensembl ENSG gene ids, some come with readable symbols...
+        if self.expression_df.columns[0] == 'GeneENSG':
+            self.expression_df.set_index('GeneENSG', inplace=True)
+            self.gene_naming = 'ENSG'
+        elif self.expression_df.columns[0] == 'Gene_ID':
+            self.expression_df.set_index('Gene_ID', inplace=True)
+            self.gene_naming = 'SYMBOL'
+        else:
+            assert False
+
         # TODO: is this right?
         self.expression_matrix = normalize(np.asarray(self.expression_df))
+        if self.gene_naming:   # HACK: BioClavis data
+            clip_val = np.percentile(self.expression_matrix, 99.9)
+            self.expression_matrix[self.expression_matrix > clip_val] = clip_val
         self.n_genes, self.n_patients = self.expression_matrix.shape
         print(self.n_genes, "genes")
         print(self.n_patients, "patients")
@@ -122,9 +133,9 @@ class FactorClustering:
             one = self.compute_and_cache_one_factor_repeats
             for nc in range(start, end):
                 # Note that NMF and ICA require very different tolerances to work correctly
-                # one(NMF_Factorizer, nc, max_iter=5000, tol=0.01, force=force)
+                one(NMF_Factorizer, nc, max_iter=5000, tol=0.01, force=force)
                 one(ICA_Factorizer, nc, max_iter=5000, tol=0.000001, force=force)
-                # one(PCA_Factorizer, nc, max_iter=0, tol=0, force=force)
+                one(PCA_Factorizer, nc, max_iter=0, tol=0, force=force)
 
             print("All Done.")
 
@@ -368,16 +379,16 @@ def one_run(basename, method):
     fc = FactorClustering(basename, 50, method)
     fc.read_expression_matrix()
 
-    if False:
+    if True:
         # Beware - this will take hours (for the full size dataset)!
         #
-        fc.compute_and_cache_multiple_factor_repeats(2, 14, force=False)
+        fc.compute_and_cache_multiple_factor_repeats(2, 9, force=False)
 
     if False:
         fc.plot_multiple_combined_factors_scatter(2, 7)
 
     if False:
-        fc.investigate_multiple_cluster_statistics(2, 21)
+        fc.investigate_multiple_cluster_statistics(2, 14)
 
     if False:
         fc.find_best_n_components(NMF_Factorizer, 2, 7, doprint=True, doshow=True)
@@ -394,20 +405,25 @@ def one_run(basename, method):
         fc.plot_multiple_single_factors_scatter(ICA_Factorizer, 2, 7)
         fc.plot_multiple_single_factors_scatter(PCA_Factorizer, 2, 7)
 
-    if True:
+    if False:
         if fc.method == 'bootstrap':
             for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
                 fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 14)
 
 
 def main():
-    possible_datasets = {1: 'Mini_Expression', 2: 'AOCS_Protein_Expression', 3: 'TCGA_OV_VST'}
+    possible_datasets = {1: 'Mini_Expression',
+                         2: 'AOCS_Protein_Expression',
+                         3: 'TCGA_OV_VST',
+                         4: 'Canon_Sample_n200'}
 
-    one_run(possible_datasets[2], 'bootstrap')
-    one_run(possible_datasets[2], 'fixed')
+    one_run(possible_datasets[4], 'bootstrap')
 
-    one_run(possible_datasets[3], 'bootstrap')
-    one_run(possible_datasets[3], 'fixed')
+    # one_run(possible_datasets[2], 'bootstrap')
+    # one_run(possible_datasets[2], 'fixed')
+    #
+    # one_run(possible_datasets[3], 'bootstrap')
+    # one_run(possible_datasets[3], 'fixed')
 
 
 if __name__ == '__main__':
