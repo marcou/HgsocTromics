@@ -28,6 +28,16 @@ class TestFactorClustering(TestCase):
         assert fc.expression_df is not None
         assert fc.expression_matrix is not None
 
+    def test_flip_metagenes(self):
+        fc = self.clustering()
+        metagenes = np.array([[1, 2, -3, 4, 5, -6, 7, 8, 9, 10],
+                             [-1, 2, -3, -4, 5, 6, -7, 8, -9, -10]])
+        assert metagenes.shape == (2, 10)
+        flipped_metagenes = fc.flip_metagenes(metagenes)
+        assert flipped_metagenes.shape == metagenes.shape
+        assert np.array_equal(flipped_metagenes[0, :], metagenes[0, :])
+        assert np.array_equal(flipped_metagenes[1, :], -metagenes[1, :])
+
     def test_cached_factor_repeats_filename(self):
         fc1 = FactorClustering('dummy', 10, 'bootstrap')
         pickle_fname = fc1.cached_factor_repeats_filename(NMF_Factorizer, 5)

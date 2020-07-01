@@ -40,7 +40,7 @@ class FactorClustering:
         self.n_patients = None
         self.gene_naming = None
         self.colours = {'NMF': u'#1f77b4', 'ICA': u'#ff7f0e', 'PCA': u'#2ca02c'}
-                                # these are from the standard matplotlib colour cycle
+        # these are from the standard matplotlib colour cycle
 
         os.makedirs(self.cache_dir, exist_ok=True)
 
@@ -66,7 +66,7 @@ class FactorClustering:
 
         # TODO: is this right?
         self.expression_matrix = normalize(np.asarray(self.expression_df))
-        if self.gene_naming:   # HACK: BioClavis data
+        if self.gene_naming:  # HACK: BioClavis data
             clip_val = np.percentile(self.expression_matrix, 99.9)
             self.expression_matrix[self.expression_matrix > clip_val] = clip_val
         self.n_genes, self.n_patients = self.expression_matrix.shape
@@ -195,7 +195,7 @@ class FactorClustering:
         """ For ICA there is a problem that a metagenes can be oriented 180 from each other
         but are effectively the same.  Here we crudely try to normalise to one orientation -
         more thought it needed"""
-        return [g if g[0] >= 0 else -g for g in stacked_metagenes[:]]
+        return np.array([g if g[0] >= 0 else -g for g in stacked_metagenes[:]])
 
     def compute_combined_tsne(self, n_components, pca_reduced_dims=20):
         # ## t-SNE plots of NMF, ICA and PCA components
@@ -205,7 +205,7 @@ class FactorClustering:
         # Read back the pickle files containing multiple runs. One file for each n_components
         # for each of NMF and ICA
         combined_tsne_cache_filename = self.cache_dir + 'combined_tsne_%d_%d_%s.pkl' % \
-                              (n_components, self.n_repeats, self.method)
+                                       (n_components, self.n_repeats, self.method)
         if not os.path.exists(combined_tsne_cache_filename):
             nmf_mg_list = self.read_cached_factors(NMF_Factorizer, n_components)
             ica_mg_list = self.read_cached_factors(ICA_Factorizer, n_components)
@@ -374,6 +374,7 @@ class FactorClustering:
         if show:
             plt.show()
 
+
 # noinspection PyUnusedLocal,PyUnreachableCode
 def one_run(basename, method):
     fc = FactorClustering(basename, 50, method)
@@ -382,13 +383,13 @@ def one_run(basename, method):
     if True:
         # Beware - this will take hours (for the full size dataset)!
         #
-        fc.compute_and_cache_multiple_factor_repeats(2, 9, force=False)
+        fc.compute_and_cache_multiple_factor_repeats(range(2, 9), force=False)
 
     if False:
-        fc.plot_multiple_combined_factors_scatter(2, 7)
+        fc.plot_multiple_combined_factors_scatter(range(2, 7))
 
     if False:
-        fc.investigate_multiple_cluster_statistics(2, 14)
+        fc.investigate_multiple_cluster_statistics(range(2, 14))
 
     if False:
         fc.find_best_n_components(NMF_Factorizer, 2, 7, doprint=True, doshow=True)
@@ -408,7 +409,7 @@ def one_run(basename, method):
     if False:
         if fc.method == 'bootstrap':
             for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
-                fc.save_multiple_median_metagenes_to_factors(facto_class, 2, 14)
+                fc.save_multiple_median_metagenes_to_factors(facto_class, range(2, 14))
 
 
 def main():
