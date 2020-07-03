@@ -14,7 +14,7 @@ class TestFactorClustering(TestCase):
 
     def clustering(self):
         if self._clustering is None:
-            self._clustering = FactorClustering('Mini_Test', 10, 'bootstrap')
+            self._clustering = FactorClustering('Mini_Test', 10, 'bootstrap', saveplots=True)
             self._clustering.read_expression_matrix()
         return self._clustering
 
@@ -113,6 +113,12 @@ class TestFactorClustering(TestCase):
         fc = self.clustering()
         fc.compute_and_cache_multiple_factor_repeats(nc_list, force=False)
         fc.plot_multiple_combined_factors_scatter(nc_list, show=False)
+
+    def test_plot_multiple_single_factors_scatter(self):
+        nc_list = [2, 3]
+        fc = self.clustering()
+        fc.compute_and_cache_multiple_factor_repeats(nc_list, force=False)
+        fc.plot_multiple_single_factors_scatter(ICA_Factorizer, [2, 3], show=False)
 
     def test_investigate_cluster_statistics(self):
         n_components = 3
