@@ -226,6 +226,7 @@ fabric.properties
 
 # Added by IPO, specific to HGSOC project
 Cache/**
+Plots/**
 DownloadedResources/**
 Factors/**
 SavedNotebookHtml/**
