@@ -51,7 +51,7 @@ class FactorClustering:
         # Read in expression spreadsheet which has been processed (see end of notebook)
         # to inlcude only protein coding genes
 
-        self.expression_filename = '../Data/%s.csv' % self.basename
+        self.expression_filename = '../Data/%s/%s_Expression.tsv' % (self.basename, self.basename)
         self.expression_df = pd.read_csv(self.expression_filename, sep='\t')
 
         # Some data comes with Ensembl ENSG gene ids, some come with readable symbols...
@@ -93,7 +93,7 @@ class FactorClustering:
                                              force=True):
         """
         For the given factorizer and n_components, perform n_repeats factorizations with different
-        random seeds and resample-with-replacement patients (bootsrapping).  Save results to
+        random seeds and resample-with-replacement patients (bootstrapping).  Save results to
         a file named for the combination of parameters.  If 'force' is False, then computation
         is skipped if the cache file already exists.
         """
@@ -112,7 +112,7 @@ class FactorClustering:
                 facto = facto_class(n_components=n_components, max_iter=max_iter, tol=tol,
                                     random_state=np.random.randint(10000))
                 if self.method == 'bootstrap':
-                    # Make a boostrap sample. The resample() method works on rows, hence the need
+                    # Make a bootstrap sample. The resample() method works on rows, hence the need
                     # for transpose in and out.
                     resampled_V = resample(V.T, n_samples=n).T
                     assert resampled_V.shape == V.shape
@@ -144,7 +144,7 @@ class FactorClustering:
 
         facto_name = facto_class.__name__[:3]
         tsne_cache_filename = self.cache_dir + 'tsne_score_medians_%s_%d_%d_%s.pkl' % \
-                              (facto_name, n_components, self.n_repeats, self.method)
+            (facto_name, n_components, self.n_repeats, self.method)
 
         if not os.path.exists(tsne_cache_filename):
             metagene_list = self.read_cached_factors(facto_class, n_components)
@@ -348,9 +348,18 @@ class FactorClustering:
         os.makedirs('../Factors/%s' % self.basename, exist_ok=True)
         for nc in nc_list:
             facto_prefix = facto_class.__name__[:3]
-            fname = '../Factors/%s/%s_median_factor_%d.csv' % (self.basename, facto_prefix, nc)
+            fname = '../Factors/%s/%s_median_factor_%d.tsv' % (self.basename, facto_prefix, nc)
             _, _, median_metagenes = self.compute_tsne_score_medians(facto_class, nc)
-            np.savetxt(fname, median_metagenes, delimiter='\t')
+            assert median_metagenes.shape == (self.n_genes, nc)
+            # We want to write a .tsv file with ENSG ids in the first column, then
+            # columns for the nc components
+            columns = ['IC%d' % c for c in range(nc)]
+            factor_df = pd.DataFrame(data=median_metagenes, columns=columns)
+            factor_df['GeneENSG'] = self.expression_df.index
+            factor_df.set_index('GeneENSG', inplace=True)
+            assert len(factor_df.columns) == nc
+            factor_df.to_csv(fname, sep='\t')
+
             print('\r%d' % nc, end='')
 
     def plot_silhouette_scores(self, nc_list, show=False):
@@ -380,7 +389,7 @@ def one_run(basename, method):
     fc = FactorClustering(basename, 50, method)
     fc.read_expression_matrix()
 
-    if True:
+    if False:
         # Beware - this will take hours (for the full size dataset)!
         #
         fc.compute_and_cache_multiple_factor_repeats(range(2, 9), force=False)
@@ -406,19 +415,19 @@ def one_run(basename, method):
         fc.plot_multiple_single_factors_scatter(ICA_Factorizer, 2, 7)
         fc.plot_multiple_single_factors_scatter(PCA_Factorizer, 2, 7)
 
-    if False:
+    if True:
         if fc.method == 'bootstrap':
             for facto_class in [NMF_Factorizer, ICA_Factorizer, PCA_Factorizer]:
                 fc.save_multiple_median_metagenes_to_factors(facto_class, range(2, 14))
 
 
 def main():
-    possible_datasets = {1: 'Mini_Expression',
-                         2: 'AOCS_Protein_Expression',
+    possible_datasets = {1: 'Mini_Test',
+                         2: 'AOCS_Protein',
                          3: 'TCGA_OV_VST',
-                         4: 'Canon_Sample_n200'}
+                         4: 'Canon_N200'}
 
-    one_run(possible_datasets[4], 'bootstrap')
+    one_run(possible_datasets[3], 'bootstrap')
 
     # one_run(possible_datasets[2], 'bootstrap')
     # one_run(possible_datasets[2], 'fixed')

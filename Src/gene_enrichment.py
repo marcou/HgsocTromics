@@ -15,14 +15,14 @@ class GeneEnrichment:
     # Analyse standard deviation of components
     def __init__(self, basename, prefix):
         self.basename = basename
-        self.prefix = prefix   # prefix to results files
+        self.prefix = prefix  # prefix to results files
         self._gene_symbols = None
         self.cache_dir = '../Cache/%s/GeneEnrichment/' % self.basename
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def gene_symbols(self):
         if self._gene_symbols is None:
-            expression_filename = '../Data/%s.csv' % self.basename
+            expression_filename = '../Data/%s/%s_Expression.tsv' % (self.basename, self.basename)
             expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['GeneENSG'])
             # expression_df.set_index('GeneENSG', inplace=True)
             ensgDictFile = '../Cache/ensgDict.pkl'
@@ -39,7 +39,9 @@ class GeneEnrichment:
 
     def read_metagene_matrix(self, factor_name):
         filename = '../Factors/%s/%s' % (self.basename, factor_name)
-        metagene_matrix = np.loadtxt(filename)
+        metagene_df = pd.read_csv(filename, sep='\t')
+        metagene_df.set_index('GeneENSG', inplace=True)
+        metagene_matrix = np.asarray(metagene_df)
         assert metagene_matrix.ndim == 2
         return metagene_matrix
 
@@ -60,21 +62,21 @@ class GeneEnrichment:
         influence = abs(metagene)
         stddev = np.std(metagene)
         mean = np.mean(metagene)
-        min = np.min(metagene)
+        min_ = np.min(metagene)
         threshold = n_stddev * stddev
         symbols = self.gene_symbols()
         assert len(symbols) == len(metagene)
         gixpairs = zip(symbols, influence)
 
-        if min >= 0:
+        if min_ >= 0:
             # Looks like its MNF...
-            selection = [symbol for (symbol, v) in gixpairs if v-mean > threshold]
+            selection = [symbol for (symbol, v) in gixpairs if v - mean > threshold]
         else:
-            selection = [symbol for (symbol, v) in gixpairs if abs(v-mean) > threshold]
+            selection = [symbol for (symbol, v) in gixpairs if abs(v - mean) > threshold]
 
         return selection
 
-    def ranked_genes_by_component(self, metagene_matrix, oneperline=False):
+    def ranked_genes_by_component(self, metagene_matrix):
         W = metagene_matrix
         ranked_genes_by_component = {}
         for ci in range(metagene_matrix.shape[1]):
@@ -152,22 +154,21 @@ class GeneEnrichment:
         gea_all_sig_results_df = pd.DataFrame()
         gea_all_sig_results_df = gea_all_sig_results_df.append(gea_results_df_by_component)
 
-
         gea_all_sig_results_df.to_csv(self.cache_dir + '%s_gea_all.tsv' % self.prefix, sep='\t')
 
 
 # noinspection PyUnreachableCode
 def main():
     ge = GeneEnrichment('TCGA_OV_VST', 'NMF_3')
-    metagenes = ge.read_metagene_matrix('NMF_median_factor_3.csv')
+    metagenes = ge.read_metagene_matrix('NMF_median_factor_3.tsv')
     ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
     ge = GeneEnrichment('TCGA_OV_VST', 'ICA_3')
-    metagenes = ge.read_metagene_matrix('ICA_median_factor_3.csv')
+    metagenes = ge.read_metagene_matrix('ICA_median_factor_3.tsv')
     ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
     ge = GeneEnrichment('TCGA_OV_VST', 'PCA_3')
-    metagenes = ge.read_metagene_matrix('PCA_median_factor_3.csv')
+    metagenes = ge.read_metagene_matrix('PCA_median_factor_3.tsv')
     ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
 

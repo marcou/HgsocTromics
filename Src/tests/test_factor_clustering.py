@@ -14,7 +14,7 @@ class TestFactorClustering(TestCase):
 
     def clustering(self):
         if self._clustering is None:
-            self._clustering = FactorClustering('Mini_Expression', 10, 'bootstrap')
+            self._clustering = FactorClustering('Mini_Test', 10, 'bootstrap')
             self._clustering.read_expression_matrix()
         return self._clustering
 
@@ -79,10 +79,10 @@ class TestFactorClustering(TestCase):
         fc = self.clustering()
         fc.compute_and_cache_multiple_factor_repeats([4, 5], force=False)
 
-    def compute_tsne_score_medians(self):
+    def test_compute_tsne_score_medians(self):
         fc = self.clustering()
         n_components = 3
-        Y, score, median_metagenes = fc.compute_tsne(ICA_Factorizer, n_components)
+        Y, score, median_metagenes = fc.compute_tsne_score_medians(ICA_Factorizer, n_components)
         assert Y.shape[0] == n_components * fc.n_repeats + n_components
         assert Y.shape[1] == 2
         assert median_metagenes.shape == (fc.n_genes, n_components)
@@ -140,7 +140,7 @@ class TestFactorClustering(TestCase):
 
     def test_save_multiple_median_metagenes_to_factors(self):
         fc = self.clustering()
-        fc.save_multiple_median_metagenes_to_factors(NMF_Factorizer, [2, 3, 4])
+        fc.save_multiple_median_metagenes_to_factors(ICA_Factorizer, [3, 4])
 
 
 if __name__ == '__main__':
