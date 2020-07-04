@@ -192,7 +192,7 @@ class FactorClustering:
         facto_name = facto_class.__name__[:3]
         plt.title("%s; %s; nc=%d; silhouette s.=%6.4f" %
                   (self.shortname, facto_name, n_components, score))
-        figname = 'single_factor_scatter_%s_%d_%s' % (facto_name, n_components, self.method)
+        figname = 'single_factor_scatter_%s_%s_%d_%s' % (self.shortname, facto_name, n_components, self.method)
         if self.saveplots:
             figpath = self.plots_dir + figname + '.pdf'
             print("Saving figure to", figpath)
@@ -257,7 +257,7 @@ class FactorClustering:
 
         plt.legend()
         plt.title("Components: %d" % n_components)
-        figname = 'combined_factors_scatter_%d_%s' % (n_components, self.method)
+        figname = 'combined_factors_scatter_%s_%d_%s' % (self.shortname, n_components, self.method)
         if self.saveplots:
             figpath = self.plots_dir + figname + '.pdf'
             print("Saving figure to", figpath)
@@ -274,7 +274,7 @@ class FactorClustering:
         plt.suptitle("%s; t-SNE clusterings for %d bootstraps of NMF, ICA and PCA" %
                      (self.shortname, self.n_repeats), size=14)
         nc_list_str = '_'.join([str(c) for c in nc_list])
-        figname = 'multiple_combined_factors_scatter_%s_%s' % (nc_list_str, self.method)
+        figname = 'multiple_combined_factors_scatter_%s_%s_%s' % (self.shortname, nc_list_str, self.method)
         if self.saveplots:
             figpath = self.plots_dir + figname + '.pdf'
             print("Saving figure to", figpath)
@@ -292,8 +292,8 @@ class FactorClustering:
                      (self.shortname, self.n_repeats, facto_class.__name__[:3]), size=14)
         facto_name = facto_class.__name__[:3]
         nc_list_str = '_'.join([str(c) for c in nc_list])
-        figname = 'multiple_single_factors_scatter_%s_%s_%s' % \
-                  (facto_name, nc_list_str, self.method)
+        figname = 'multiple_single_factors_scatter_%s_%s_%s_%s' % \
+                  (self.shortname, facto_name, nc_list_str, self.method)
         if self.saveplots:
             figpath = self.plots_dir + figname + '.pdf'
             print("Saving figure to", figpath)
@@ -410,7 +410,7 @@ class FactorClustering:
         plt.title("%s; Silhouette plots (%s)" % (self.shortname, self.method))
 
         nc_list_str = '_'.join([str(c) for c in nc_list])
-        figname = 'multiple_single_factors_scatter_%s_%s' % (nc_list_str, self.method)
+        figname = 'multiple_single_factors_scatter_%s_%s_%s' % (self.shortname, nc_list_str, self.method)
         if self.saveplots:
             figpath = self.plots_dir + figname + '.pdf'
             print("Saving figure to", figpath)
