@@ -9,7 +9,8 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 # Make wrapper classes for FastICA and NMF, so we can interface to them identically
 # noinspection PyPep8Naming,PyPep8Naming
 class ICA_Factorizer(FastICA):
-    def __init__(self, n_components=None, max_iter=200, tol=0.01, random_state=42, fun='logcosh'):
+    def __init__(self, n_components=None, max_iter=5000, tol=0.000001, random_state=42,
+                 fun='logcosh'):
         FastICA.__init__(self, n_components=n_components, max_iter=max_iter, tol=tol,
                          random_state=random_state, fun=fun)
         self.V = None
@@ -48,7 +49,7 @@ class ICA_Factorizer(FastICA):
 
 # noinspection PyPep8Naming
 class NMF_Factorizer(NMF):
-    def __init__(self, n_components=None, max_iter=200, tol=0.01, random_state=42):
+    def __init__(self, n_components=None, max_iter=5000, tol=0.01, random_state=42):
         NMF.__init__(self, n_components=n_components, max_iter=max_iter,
                      random_state=random_state, tol=tol)
         self.V = None

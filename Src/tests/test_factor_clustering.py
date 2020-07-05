@@ -1,4 +1,3 @@
-import os
 import unittest
 from unittest import TestCase
 
@@ -58,18 +57,14 @@ class TestFactorClustering(TestCase):
             fc = FactorClustering(self.clustering().basename, 10, method)
             fc.read_expression_matrix()
 
-            pkl_fname = fc.compute_and_cache_one_factor_repeats(
-                facto_class, n_components, max_iter=200, tol=0.01, force=True)
+            metagene_list = fc.compute_and_cache_one_factor_repeats(
+                facto_class, n_components, force=True)
 
-            assert os.path.exists(pkl_fname)
-            metagene_list = fc.read_cached_factors(facto_class, n_components)
             # Ensure there is randomness in the repeat results!
             if expect_randomness:
                 assert not np.array_equal(metagene_list[0], metagene_list[1])
             else:
                 assert np.array_equal(metagene_list[0], metagene_list[1])
-            metagene_list_2 = fc.read_cached_factors(facto_class, n_components)
-            assert len(metagene_list_2) == fc.n_repeats
 
         one_test(NMF_Factorizer, 'bootstrap', expect_randomness=True)
         one_test(PCA_Factorizer, 'bootstrap', expect_randomness=True)
@@ -93,38 +88,32 @@ class TestFactorClustering(TestCase):
         n_components = 3
         facto = ICA_Factorizer
         fc.compute_and_cache_one_factor_repeats(
-            facto, n_components, max_iter=200, tol=0.01, force=False)
+            facto, n_components, force=False)
         fc.plot_single_factor_scatter(facto, n_components, show=False)
 
     def test_compute_combined_tsne(self):
         fc = self.clustering()
         n_components = 3
-        fc.compute_and_cache_multiple_factor_repeats([3], force=False)
         Y = fc.compute_combined_tsne(n_components)
         assert Y.shape == (3 * n_components * fc.n_repeats, 2)
 
     def test_plot_combined_factors_scatter(self):
         fc = self.clustering()
-        fc.compute_and_cache_multiple_factor_repeats([4], force=False)
         fc.plot_combined_factors_scatter(4, show=False)
 
     def test_plot_multiple_combined_factors_scatter(self):
         nc_list = [2, 3]
         fc = self.clustering()
-        fc.compute_and_cache_multiple_factor_repeats(nc_list, force=False)
         fc.plot_multiple_combined_factors_scatter(nc_list, show=False)
 
     def test_plot_multiple_single_factors_scatter(self):
         nc_list = [2, 3]
         fc = self.clustering()
-        fc.compute_and_cache_multiple_factor_repeats(nc_list, force=False)
-        fc.plot_multiple_single_factors_scatter(ICA_Factorizer, [2, 3], show=False)
+        fc.plot_multiple_single_factors_scatter(ICA_Factorizer, nc_list, show=False)
 
     def test_investigate_cluster_statistics(self):
         n_components = 3
         fc = self.clustering()
-        fc.compute_and_cache_one_factor_repeats(
-            ICA_Factorizer, n_components, max_iter=200, tol=0.01, force=False)
         result = fc.investigate_cluster_statistics(ICA_Factorizer, n_components)
         print(result)
 
@@ -132,10 +121,8 @@ class TestFactorClustering(TestCase):
         n_components = 3
         facto_class = NMF_Factorizer
         fc = self.clustering()
-        fc.compute_and_cache_one_factor_repeats(
-            facto_class, n_components, max_iter=200, tol=0.01, force=False)
         score, median_metagenes = fc.compute_silhouette_score_and_median(
-            NMF_Factorizer, n_components, doprint=False)
+            facto_class, n_components, doprint=False)
         print("Score = %8.6f" % score)
         assert 0 <= score <= 1.0
         assert median_metagenes.shape == (fc.n_genes, n_components)
