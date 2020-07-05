@@ -200,9 +200,14 @@ class FactorClustering:
 
     def flip_metagenes(self, stacked_metagenes):
         """ For ICA there is a problem that a metagenes can be oriented 180 from each other
-        but are effectively the same.  Here we crudely try to normalise to one orientation -
-        more thought it needed"""
-        return np.array([g if g[0] >= 0 else -g for g in stacked_metagenes[:]])
+        but are effectively the same.  This version simply ensures the most extreme value
+        is +ve"""
+        return np.array([g if np.max(g) > -np.min(g) else -g for g in stacked_metagenes[:]])
+
+    def flip_metagenes_2(self, stacked_metagenes):
+        """ For ICA there is a problem that a metagenes can be oriented 180 from each other
+        but are effectively the same.  This version looks at the most extreme value"""
+        return np.array([g if np.max(g) > -np.min(g) else -g for g in stacked_metagenes[:]])
 
     def compute_combined_tsne(self, n_components, pca_reduced_dims=20):
         # ## t-SNE plots of NMF, ICA and PCA components
