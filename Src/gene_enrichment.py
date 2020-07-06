@@ -142,7 +142,7 @@ class GeneEnrichment:
         os.makedirs(download_directory, exist_ok=True)
 
         url_list = [
-            'ftp://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz',
+            'http://geneontology.org/gene-associations/goa_human.gaf.gz',
             'http://purl.obolibrary.org/obo/go/go-basic.obo']
 
         for url in url_list:
