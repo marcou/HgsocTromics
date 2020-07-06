@@ -8,10 +8,11 @@ import gzip
 import numpy as np
 import pandas as pd
 import pickle
+import wget
 import mygene
 
 
-# noinspection PyStringFormat
+# noinspection PyStringFormat,PyMethodMayBeStatic
 class GeneEnrichment:
     # Analyse standard deviation of components
     def __init__(self, basename, prefix):
@@ -135,6 +136,19 @@ class GeneEnrichment:
             return ge_df
         else:
             return None
+
+    def cache_downloaded_resources(self):
+        download_directory = '../DownloadedResources/'
+        os.makedirs(download_directory, exist_ok=True)
+
+        url_list = [
+            'ftp://ftp.ebi.ac.uk/pub/databases/GO/goa/HUMAN/goa_human.gaf.gz',
+            'http://purl.obolibrary.org/obo/go/go-basic.obo']
+
+        for url in url_list:
+            print("Downloading resource from %s ..." % url)
+            if not os.path.exists(os.path.join(download_directory, os.path.basename(url))):
+                wget.download(url, out=download_directory)
 
     def perform_gene_enrichment_analysis(self, metagene_matrix, method='fdr'):
         # Load the Gene Ontology

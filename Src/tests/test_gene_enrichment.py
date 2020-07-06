@@ -47,6 +47,9 @@ class TestGeneEnrichment(unittest.TestCase):
         assert len(symbols) == 100
         print(symbols[:10])
 
+    def test_cache_downloaded_resources(self):
+        self.ge.cache_downloaded_resources()
+
     def test_read_metagene_matrix(self):
         mgmat = self.ge.read_metagene_matrix('RandomTest_3.tsv')
         assert mgmat.ndim == 2
