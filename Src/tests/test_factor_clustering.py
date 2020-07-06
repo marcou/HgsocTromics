@@ -8,12 +8,16 @@ from factorizer_wrappers import ICA_Factorizer, NMF_Factorizer, PCA_Factorizer
 
 
 class TestFactorClustering(TestCase):
+
+    def basename(self):
+        return 'Mini_Test'
+
     def setUp(self):
         self._clustering = None
 
     def clustering(self):
         if self._clustering is None:
-            self._clustering = FactorClustering('Mini_Test', 10, 'bootstrap', saveplots=True)
+            self._clustering = FactorClustering(self.basename(), 10, 'bootstrap', saveplots=True)
             self._clustering.read_expression_matrix()
         return self._clustering
 
@@ -30,7 +34,7 @@ class TestFactorClustering(TestCase):
     def test_flip_metagenes(self):
         fc = self.clustering()
         metagenes = np.array([[1, 2, -3, 4, 5, -6, 7, 8, 9, 10],
-                             [-1, 2, -3, -4, 5, 6, -7, 8, -9, -10]])
+                              [-1, 2, -3, -4, 5, 6, -7, 8, -9, -10]])
         assert metagenes.shape == (2, 10)
         flipped_metagenes = fc.flip_metagenes(metagenes)
         assert flipped_metagenes.shape == metagenes.shape
@@ -134,6 +138,14 @@ class TestFactorClustering(TestCase):
     def test_save_multiple_median_metagenes_to_factors(self):
         fc = self.clustering()
         fc.save_multiple_median_metagenes_to_factors(ICA_Factorizer, [3, 4])
+
+
+class TestFactorClusteringCanon(TestFactorClustering):
+    """ This repeats the tests as above but with the trivial 'Mini_Canon' dataset
+    which uses different gene identifiers"""
+
+    def basename(self):
+        return 'Mini_Canon'
 
 
 if __name__ == '__main__':

@@ -19,56 +19,72 @@ class GeneEnrichment:
         self.basename = basename
         self.prefix = prefix  # prefix to results files
         self._gene_symbols = None
-        self._all_ensg_ids = None
         self.cache_dir = '../Cache/%s/GeneEnrichment/' % self.basename
         os.makedirs(self.cache_dir, exist_ok=True)
 
-    def all_ensg_ids(self):
-        # We'll need to read the first row of the expression matrix file to get these
-        if self._all_ensg_ids is None:
-            expression_filename = '../Data/%s/%s_Expression.tsv' % (self.basename, self.basename)
-            expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['GeneENSG'])
-            expression_df.set_index('GeneENSG', inplace=True)
-            self._all_ensg_ids = expression_df.index.values.tolist()
-        return self._all_ensg_ids
+    def download_and_cache_resources(self):
+        download_directory = '../DownloadedResources/'
+        os.makedirs(download_directory, exist_ok=True)
 
-    def ensg_dictionary(self):
-        ensgDictFile = self.cache_dir + 'ensgDict.pkl'
-        if not os.path.exists(ensgDictFile):  # Run only if dictionary file does not already exist
+        url_list = [
+            'http://geneontology.org/gene-associations/goa_human.gaf.gz',
+            'http://purl.obolibrary.org/obo/go/go-basic.obo']
 
-            ensgIDs = self.all_ensg_ids()  # All the gene IDs in this study
-            mg = mygene.MyGeneInfo()
-            ginfo = mg.querymany(ensgIDs, scopes='ensembl.gene')
-
-            ensgDict = {}
-            for g in ginfo:
-                ensg = g['query']
-                del g['query']
-                ensgDict[ensg] = g
-
-            print("Writing dictionary to %s..." % ensgDictFile)
-            with open(ensgDictFile, 'wb') as f:
-                pickle.dump(ensgDict, f)
-            print("Done.")
-
-        with open(ensgDictFile, 'rb') as f:
-            ensgDict = pickle.load(f)
-
-        return ensgDict
+        for url in url_list:
+            p = os.path.join(download_directory, os.path.basename(url))
+            if not os.path.exists(p):
+                print("Downloading resource from %s ..." % url)
+                wget.download(url, out=download_directory)
 
     def gene_symbols(self):
+        """ We need HUGO style readable gene symbols for all genes in our study """
         if self._gene_symbols is None:
-            self.all_ensg_ids()
+            expression_filename = '../Data/%s/%s_Expression.tsv' % \
+                                  (self.basename, self.basename)
+            if 'Canon' in self.basename:
+                # For the Canon data it's actually very simple, since the expression
+                # matrix already gives HUGO gene names
 
-            ensgDict = self.ensg_dictionary()
+                # Read in only the first 'Gene_ID' column of the expression matrix
+                expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['Gene_ID'])
+                temposeq_gene_ids = expression_df['Gene_ID'].tolist()
 
-            for (ensg, g) in ensgDict.items():
-                if 'symbol' not in g.keys():
-                    g['symbol'] = ensg  # ensure lookup always succeeds
+                # These are of the form, e.g. 'AKT1_210', the number after the '_' is a TempO-Seq
+                # identifier which we need to strip out.
+                self._gene_symbols = [temposeq.split('_')[0] for temposeq in temposeq_gene_ids]
+                assert 'APOE' in self._gene_symbols
+            else:
+                # For the ovarian cancer datasets, the symbols are in ENSG format, so we need
+                # to convert
+                expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['GeneENSG'])
+                all_ensg_ids = expression_df['GeneENSG'].tolist()
 
-            gene_ENSG_ids = self.all_ensg_ids()
-            self._gene_symbols = [ensgDict[ensg]['symbol'] if ensg in ensgDict else ensg
-                                  for ensg in gene_ENSG_ids]
+                # We'll need a dictionary, which we'll compute first time then cacche to file
+                ensgDictFile = self.cache_dir + 'ensgDict.pkl'
+                if not os.path.exists(ensgDictFile):
+                    mg = mygene.MyGeneInfo()
+                    ginfo = mg.querymany(all_ensg_ids, scopes='ensembl.gene')
+
+                    ensgDict = {}
+                    for g in ginfo:
+                        ensg = g['query']
+                        del g['query']
+                        ensgDict[ensg] = g
+
+                    print("Writing dictionary to %s..." % ensgDictFile)
+                    with open(ensgDictFile, 'wb') as f:
+                        pickle.dump(ensgDict, f)
+                    print("Done.")
+                with open(ensgDictFile, 'rb') as f:
+                    ensgDict = pickle.load(f)
+
+                for (ensg, g) in ensgDict.items():
+                    if 'symbol' not in g.keys():
+                        g['symbol'] = ensg  # ensure lookup always succeeds
+
+                self._gene_symbols = [ensgDict[ensg]['symbol'] if ensg in ensgDict else ensg
+                                      for ensg in all_ensg_ids]
+
         return self._gene_symbols
 
     def read_metagene_matrix(self, factor_name):
@@ -137,22 +153,11 @@ class GeneEnrichment:
         else:
             return None
 
-    def cache_downloaded_resources(self):
-        download_directory = '../DownloadedResources/'
-        os.makedirs(download_directory, exist_ok=True)
-
-        url_list = [
-            'http://geneontology.org/gene-associations/goa_human.gaf.gz',
-            'http://purl.obolibrary.org/obo/go/go-basic.obo']
-
-        for url in url_list:
-            print("Downloading resource from %s ..." % url)
-            if not os.path.exists(os.path.join(download_directory, os.path.basename(url))):
-                wget.download(url, out=download_directory)
-
     def perform_gene_enrichment_analysis(self, metagene_matrix, method='fdr'):
         # Load the Gene Ontology
         n_comps = metagene_matrix.shape[1]
+
+        self.download_and_cache_resources()   # Download ontology and annotations, if necessary
         gene_ontology = obo_parser.GODag('../DownloadedResources/go-basic.obo')
 
         # Load the human annotations
@@ -184,7 +189,7 @@ class GeneEnrichment:
         rankings = self.ranked_genes_by_component(metagene_matrix)
         for ci in range(n_comps):
             study_genes = rankings[ci]
-            print('Comp. %d: %s...' % (ci, str(study_genes[:10])))
+            print('\nComp. %d: %s...' % (ci, str(study_genes[:10])))
             gea_results_by_component[ci] = gea.run_study(study_genes)
 
         # Get results into a dataframe per component.  Easiest way is to use routine to
@@ -206,16 +211,21 @@ class GeneEnrichment:
 
 # noinspection PyUnreachableCode
 def main():
-    ge = GeneEnrichment('TCGA_OV_VST', 'NMF_3')
+    # ge = GeneEnrichment('TCGA_OV_VST', 'NMF_3')
+    # metagenes = ge.read_metagene_matrix('NMF_median_factor_3.tsv')
+    # ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+    #
+    # ge = GeneEnrichment('TCGA_OV_VST', 'ICA_3')
+    # metagenes = ge.read_metagene_matrix('ICA_median_factor_3.tsv')
+    # ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+    #
+    # ge = GeneEnrichment('TCGA_OV_VST', 'PCA_3')
+    # metagenes = ge.read_metagene_matrix('PCA_median_factor_3.tsv')
+    # ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+
+    # Demonstrate on the Canon dataset
+    ge = GeneEnrichment('Canon_N200', 'NMF_3')
     metagenes = ge.read_metagene_matrix('NMF_median_factor_3.tsv')
-    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
-
-    ge = GeneEnrichment('TCGA_OV_VST', 'ICA_3')
-    metagenes = ge.read_metagene_matrix('ICA_median_factor_3.tsv')
-    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
-
-    ge = GeneEnrichment('TCGA_OV_VST', 'PCA_3')
-    metagenes = ge.read_metagene_matrix('PCA_median_factor_3.tsv')
     ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
 

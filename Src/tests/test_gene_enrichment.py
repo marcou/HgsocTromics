@@ -8,8 +8,12 @@ from gene_enrichment import GeneEnrichment
 
 class TestGeneEnrichment(unittest.TestCase):
     # noinspection PyTypeChecker
+
+    def basename(self):
+        return 'Mini_Test'
+
     def setUp(self):
-        self.ge = GeneEnrichment('Mini_Test', 'DUMMY')
+        self.ge = GeneEnrichment(self.basename(), 'DUMMY')
         np.random.seed(42)
 
         nc = 3
@@ -29,26 +33,17 @@ class TestGeneEnrichment(unittest.TestCase):
         assert len(factor_df.columns) == nc
         factor_df.to_csv(filename, sep='\t')
 
-    def test_all_ensg_ids(self):
-        ensgs = self.ge.all_ensg_ids()
-        assert len(ensgs) == 100
-        assert 'ENSG00000000419' in ensgs
-
-    def test_ensg_dictionary(self):
-        ensg_dict = self.ge.ensg_dictionary()
-        # Example usage:
-        gid = 'ENSG00000000419'
-        # All ENSG ids used in this study should be in the dictionary
-        ginfo = ensg_dict[gid]
-        print(ginfo)
-
     def test_gene_symbols(self):
         symbols = self.ge.gene_symbols()
-        assert len(symbols) == 100
         print(symbols[:10])
+        assert len(symbols) == 100
+        if 'Canon' in self.ge.basename:
+            assert 'APOE' in symbols  # Known to be in the 100 'Mini_Canon' dataset
+        else:
+            assert 'CFTR' in symbols  # Known to be in the 100 'Mini_test' dataset
 
     def test_cache_downloaded_resources(self):
-        self.ge.cache_downloaded_resources()
+        self.ge.download_and_cache_resources()
 
     def test_read_metagene_matrix(self):
         mgmat = self.ge.read_metagene_matrix('RandomTest_3.tsv')
@@ -85,6 +80,14 @@ class TestGeneEnrichment(unittest.TestCase):
     def test_perform_gene_enrichment_analysis(self):
         # The Bonferroni method is faster for testing; use 'fdr' (default) in anger
         self.ge.perform_gene_enrichment_analysis(self.random_metagene_matrix, method='bonferroni')
+
+
+class TestGeneEnrichmentCanon(TestGeneEnrichment):
+    """ This repeats the tests as above but with the trivial 'Mini_Canon' dataset
+    which uses different gene identifiers"""
+
+    def basename(self):
+        return 'Mini_Canon'
 
 
 if __name__ == '__main__':
