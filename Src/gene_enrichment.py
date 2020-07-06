@@ -8,6 +8,7 @@ import gzip
 import numpy as np
 import pandas as pd
 import pickle
+import mygene
 
 
 # noinspection PyStringFormat
@@ -17,22 +18,54 @@ class GeneEnrichment:
         self.basename = basename
         self.prefix = prefix  # prefix to results files
         self._gene_symbols = None
+        self._all_ensg_ids = None
         self.cache_dir = '../Cache/%s/GeneEnrichment/' % self.basename
         os.makedirs(self.cache_dir, exist_ok=True)
 
-    def gene_symbols(self):
-        if self._gene_symbols is None:
+    def all_ensg_ids(self):
+        # We'll need to read the first row of the expression matrix file to get these
+        if self._all_ensg_ids is None:
             expression_filename = '../Data/%s/%s_Expression.tsv' % (self.basename, self.basename)
             expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['GeneENSG'])
-            # expression_df.set_index('GeneENSG', inplace=True)
-            ensgDictFile = '../Cache/ensgDict.pkl'
-            with open(ensgDictFile, 'rb') as f:
-                ensgDict = pickle.load(f)
+            expression_df.set_index('GeneENSG', inplace=True)
+            self._all_ensg_ids = expression_df.index.values.tolist()
+        return self._all_ensg_ids
+
+    def ensg_dictionary(self):
+        ensgDictFile = self.cache_dir + 'ensgDict.pkl'
+        if not os.path.exists(ensgDictFile):  # Run only if dictionary file does not already exist
+
+            ensgIDs = self.all_ensg_ids()  # All the gene IDs in this study
+            mg = mygene.MyGeneInfo()
+            ginfo = mg.querymany(ensgIDs, scopes='ensembl.gene')
+
+            ensgDict = {}
+            for g in ginfo:
+                ensg = g['query']
+                del g['query']
+                ensgDict[ensg] = g
+
+            print("Writing dictionary to %s..." % ensgDictFile)
+            with open(ensgDictFile, 'wb') as f:
+                pickle.dump(ensgDict, f)
+            print("Done.")
+
+        with open(ensgDictFile, 'rb') as f:
+            ensgDict = pickle.load(f)
+
+        return ensgDict
+
+    def gene_symbols(self):
+        if self._gene_symbols is None:
+            self.all_ensg_ids()
+
+            ensgDict = self.ensg_dictionary()
+
             for (ensg, g) in ensgDict.items():
                 if 'symbol' not in g.keys():
                     g['symbol'] = ensg  # ensure lookup always succeeds
 
-            gene_ENSG_ids = expression_df['GeneENSG']
+            gene_ENSG_ids = self.all_ensg_ids()
             self._gene_symbols = [ensgDict[ensg]['symbol'] if ensg in ensgDict else ensg
                                   for ensg in gene_ENSG_ids]
         return self._gene_symbols

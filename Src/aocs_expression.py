@@ -1,3 +1,6 @@
+# NOTE: THIS FILE IS NOT CURRENTLY USED OR TESTED
+# KEEPING  TO PICK BITS OF CODE AS NEEDED
+
 # coding: utf-8
 
 # # Applying ICA / NMF to AOCS Ovarian Cancer gene expression

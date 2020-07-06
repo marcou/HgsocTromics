@@ -29,6 +29,19 @@ class TestGeneEnrichment(unittest.TestCase):
         assert len(factor_df.columns) == nc
         factor_df.to_csv(filename, sep='\t')
 
+    def test_all_ensg_ids(self):
+        ensgs = self.ge.all_ensg_ids()
+        assert len(ensgs) == 100
+        assert 'ENSG00000000419' in ensgs
+
+    def test_ensg_dictionary(self):
+        ensg_dict = self.ge.ensg_dictionary()
+        # Example usage:
+        gid = 'ENSG00000000419'
+        # All ENSG ids used in this study should be in the dictionary
+        ginfo = ensg_dict[gid]
+        print(ginfo)
+
     def test_gene_symbols(self):
         symbols = self.ge.gene_symbols()
         assert len(symbols) == 100
