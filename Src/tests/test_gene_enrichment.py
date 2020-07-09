@@ -10,26 +10,31 @@ class TestGeneEnrichment(unittest.TestCase):
     # noinspection PyTypeChecker
 
     def basename(self):
-        return 'Mini_Test'
+        return 'Mini_AOCS'
 
     def setUp(self):
-        self.ge = GeneEnrichment(self.basename(), 'DUMMY')
+        self.ge = GeneEnrichment(self.basename(), 'RND_3_kegg')  # 'RND' : RaNDom!
         np.random.seed(42)
 
         nc = 3
         self.random_metagene_matrix = np.random.randn(100, nc)
 
         os.makedirs('../Factors/%s' % self.ge.basename, exist_ok=True)
-        filename = '../Factors/%s/%s' % (self.ge.basename, 'RandomTest_3.tsv')
+        filename = '../Factors/%s/%s' % (self.ge.basename, 'RND_median_factor_3.tsv')
 
         # We want to write a .tsv file with ENSG ids in the first column, then
         # columns for the nc components
         columns = ['IC%d' % c for c in range(nc)]
         factor_df = pd.DataFrame(data=self.random_metagene_matrix, columns=columns)
-        expression_df = pd.read_csv('../Data/Mini_Test/Mini_Test_Expression.tsv',
-                                    sep='\t', usecols=['GeneENSG'])
-        factor_df['GeneENSG'] = expression_df.index
-        factor_df.set_index('GeneENSG', inplace=True)
+
+        expression_filename = '../Data/%s/%s_Expression.tsv' % (self.basename(), self.basename())
+
+        # The gene column name is different between Canon and TCGA/AOCS datasets
+        expression_df = pd.read_csv(expression_filename, sep='\t',
+                                    usecols=[self.ge.gene_column_name])
+        factor_df[self.ge.gene_column_name] = expression_df.index
+        factor_df.set_index(self.ge.gene_column_name, inplace=True)
+
         assert len(factor_df.columns) == nc
         factor_df.to_csv(filename, sep='\t')
 
@@ -40,13 +45,13 @@ class TestGeneEnrichment(unittest.TestCase):
         if 'Canon' in self.ge.basename:
             assert 'APOE' in symbols  # Known to be in the 100 'Mini_Canon' dataset
         else:
-            assert 'CFTR' in symbols  # Known to be in the 100 'Mini_test' dataset
+            assert 'CFTR' in symbols  # Known to be in the 100 'Mini_AOCS' dataset
 
     def test_cache_downloaded_resources(self):
         self.ge.download_and_cache_resources()
 
     def test_read_metagene_matrix(self):
-        mgmat = self.ge.read_metagene_matrix('RandomTest_3.tsv')
+        mgmat = self.ge.read_metagene_matrix('RND_median_factor_3.tsv')
         assert mgmat.ndim == 2
         assert mgmat.shape == (100, 3)
 

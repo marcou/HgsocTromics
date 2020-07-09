@@ -10,7 +10,7 @@ from factorizer_wrappers import ICA_Factorizer, NMF_Factorizer, PCA_Factorizer
 class TestFactorClustering(TestCase):
 
     def basename(self):
-        return 'Mini_Test'
+        return 'Mini_AOCS'
 
     def setUp(self):
         self._clustering = None

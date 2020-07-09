@@ -29,6 +29,7 @@ class FactorClustering:
     def __init__(self, basename, n_repeats=50, method='bootstrap', saveplots=False):
         assert method in ['bootstrap', 'fixed']
         self.basename = basename  # Eg "Mini_Expression"
+        self.gene_column_name = 'Gene_ID' if 'Canon' in self.basename else 'GeneENSG'
         self.shortname = self.basename[:4]  # e.g. "Mini"
         self.cache_dir = '../Cache/%s/FactorClustering/' % self.basename
         self.plots_dir = '../Plots/%s/FactorClustering/' % self.basename
@@ -58,18 +59,12 @@ class FactorClustering:
         self.expression_df = pd.read_csv(self.expression_filename, sep='\t')
 
         # Some data comes with Ensembl ENSG gene ids, some come with readable symbols...
-        if self.expression_df.columns[0] == 'GeneENSG':
-            self.expression_df.set_index('GeneENSG', inplace=True)
-            self.gene_naming = 'ENSG'
-        elif self.expression_df.columns[0] == 'Gene_ID':
-            self.expression_df.set_index('Gene_ID', inplace=True)
-            self.gene_naming = 'SYMBOL'
-        else:
-            assert False
+
+        self.expression_df.set_index(self.gene_column_name, inplace=True)
 
         # TODO: is this right?
         self.expression_matrix = normalize(np.asarray(self.expression_df))
-        if self.gene_naming:  # HACK: BioClavis data
+        if 'Canon' in self.basename:  # HACK: Canon TempO-Seq data
             clip_val = np.percentile(self.expression_matrix, 99.9)
             self.expression_matrix[self.expression_matrix > clip_val] = clip_val
         self.n_genes, self.n_patients = self.expression_matrix.shape
@@ -384,12 +379,12 @@ class FactorClustering:
             fname = '../Factors/%s/%s_median_factor_%d.tsv' % (self.basename, facto_prefix, nc)
             _, _, median_metagenes = self.compute_tsne_score_medians(facto_class, nc)
             assert median_metagenes.shape == (self.n_genes, nc)
-            # We want to write a .tsv file with ENSG ids in the first column, then
+            # We want to write a .tsv file with ids in the first column, then
             # columns for the nc components
             columns = ['IC%d' % c for c in range(nc)]
             factor_df = pd.DataFrame(data=median_metagenes, columns=columns)
-            factor_df['GeneENSG'] = self.expression_df.index
-            factor_df.set_index('GeneENSG', inplace=True)
+            factor_df[self.gene_column_name] = self.expression_df.index
+            factor_df.set_index(self.gene_column_name, inplace=True)
             assert len(factor_df.columns) == nc
             factor_df.to_csv(fname, sep='\t')
 
@@ -404,9 +399,12 @@ class FactorClustering:
             ICA_sc[nc] = compute(ICA_Factorizer, nc)[1]
             PCA_sc[nc] = compute(PCA_Factorizer, nc)[1]
 
-        plt.plot(NMF_sc.keys(), NMF_sc.values(), '-o', c=self.colour(NMF_Factorizer), label='NMF')
-        plt.plot(ICA_sc.keys(), ICA_sc.values(), '-o', c=self.colour(ICA_Factorizer), label='ICA')
-        plt.plot(PCA_sc.keys(), PCA_sc.values(), '-o', c=self.colour(PCA_Factorizer), label='PCA')
+        plt.plot(list(NMF_sc.keys()), list(NMF_sc.values()), '-o', c=self.colour(NMF_Factorizer),
+                 label='NMF')
+        plt.plot(list(ICA_sc.keys()), list(ICA_sc.values()), '-o', c=self.colour(ICA_Factorizer),
+                 label='ICA')
+        plt.plot(list(PCA_sc.keys()), list(PCA_sc.values()), '-o', c=self.colour(PCA_Factorizer),
+                 label='PCA')
         plt.xlabel('n_components')
         plt.ylabel('Silhouette score')
         plt.xticks(np.arange(min(nc_list), max(nc_list), step=1))
@@ -459,7 +457,7 @@ def one_run(basename, method, saveplots=True):
 
 
 def main():
-    possible_datasets = {1: 'Mini_Test',
+    possible_datasets = {1: 'Mini_AOCS',
                          2: 'AOCS_Protein',
                          3: 'TCGA_OV_VST',
                          4: 'Canon_N200'}

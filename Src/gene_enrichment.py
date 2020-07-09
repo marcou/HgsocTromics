@@ -20,6 +20,7 @@ class GeneEnrichment:
         self.prefix = prefix  # prefix to results files
         self._gene_symbols = None
         self.cache_dir = '../Cache/%s/GeneEnrichment/' % self.basename
+        self.gene_column_name = 'Gene_ID' if 'Canon' in self.basename else 'GeneENSG'
         os.makedirs(self.cache_dir, exist_ok=True)
 
     def download_and_cache_resources(self):
@@ -41,30 +42,26 @@ class GeneEnrichment:
         if self._gene_symbols is None:
             expression_filename = '../Data/%s/%s_Expression.tsv' % \
                                   (self.basename, self.basename)
+
+            # Read in only the first 'Gene_ID' column of the expression matrix
+            expression_df = pd.read_csv(expression_filename, sep='\t',
+                                        usecols=[self.gene_column_name])
+            all_gene_ids = expression_df[self.gene_column_name].tolist()
             if 'Canon' in self.basename:
                 # For the Canon data it's actually very simple, since the expression
                 # matrix already gives HUGO gene names
-
-                # Read in only the first 'Gene_ID' column of the expression matrix
-                expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['Gene_ID'])
-                temposeq_gene_ids = expression_df['Gene_ID'].tolist()
-
                 # These are of the form, e.g. 'AKT1_210', the number after the '_' is a TempO-Seq
                 # identifier which we need to strip out.
-                self._gene_symbols = [temposeq.split('_')[0] for temposeq in temposeq_gene_ids]
+                self._gene_symbols = [temposeq.split('_')[0] for temposeq in all_gene_ids]
                 assert 'APOE' in self._gene_symbols
             else:
-                # For the ovarian cancer datasets, the symbols are in ENSG format, so we need
-                # to convert
-                expression_df = pd.read_csv(expression_filename, sep='\t', usecols=['GeneENSG'])
-                all_ensg_ids = expression_df['GeneENSG'].tolist()
-
-                # We'll need a dictionary, which we'll compute first time then cacche to file
+                # For AOCS and TCGA gene ids are in ENSG format
+                assert 'ENSG' in all_gene_ids[0]
+                # We'll need a dictionary, which we'll compute first time then cache to file
                 ensgDictFile = self.cache_dir + 'ensgDict.pkl'
                 if not os.path.exists(ensgDictFile):
                     mg = mygene.MyGeneInfo()
-                    ginfo = mg.querymany(all_ensg_ids, scopes='ensembl.gene')
-
+                    ginfo = mg.querymany(all_gene_ids, scopes='ensembl.gene')
                     ensgDict = {}
                     for g in ginfo:
                         ensg = g['query']
@@ -83,14 +80,14 @@ class GeneEnrichment:
                         g['symbol'] = ensg  # ensure lookup always succeeds
 
                 self._gene_symbols = [ensgDict[ensg]['symbol'] if ensg in ensgDict else ensg
-                                      for ensg in all_ensg_ids]
+                                      for ensg in all_gene_ids]
 
         return self._gene_symbols
 
     def read_metagene_matrix(self, factor_name):
         filename = '../Factors/%s/%s' % (self.basename, factor_name)
         metagene_df = pd.read_csv(filename, sep='\t')
-        metagene_df.set_index('GeneENSG', inplace=True)
+        metagene_df.set_index(self.gene_column_name, inplace=True)
         metagene_matrix = np.asarray(metagene_df)
         assert metagene_matrix.ndim == 2
         return metagene_matrix
@@ -211,17 +208,17 @@ class GeneEnrichment:
 
 # noinspection PyUnreachableCode
 def main():
-    # ge = GeneEnrichment('TCGA_OV_VST', 'NMF_3')
-    # metagenes = ge.read_metagene_matrix('NMF_median_factor_3.tsv')
-    # ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
-    #
-    # ge = GeneEnrichment('TCGA_OV_VST', 'ICA_3')
-    # metagenes = ge.read_metagene_matrix('ICA_median_factor_3.tsv')
-    # ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
-    #
-    # ge = GeneEnrichment('TCGA_OV_VST', 'PCA_3')
-    # metagenes = ge.read_metagene_matrix('PCA_median_factor_3.tsv')
-    # ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+    ge = GeneEnrichment('TCGA_OV_VST', 'NMF_3')
+    metagenes = ge.read_metagene_matrix('NMF_median_factor_3.tsv')
+    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+
+    ge = GeneEnrichment('TCGA_OV_VST', 'ICA_3')
+    metagenes = ge.read_metagene_matrix('ICA_median_factor_3.tsv')
+    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
+
+    ge = GeneEnrichment('TCGA_OV_VST', 'PCA_3')
+    metagenes = ge.read_metagene_matrix('PCA_median_factor_3.tsv')
+    ge.perform_gene_enrichment_analysis(metagenes, method='bonferroni')
 
     # Demonstrate on the Canon dataset
     ge = GeneEnrichment('Canon_N200', 'NMF_3')
